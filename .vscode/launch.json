@@ -1,0 +1,59 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug (OpenOCD)",
+            "request": "launch",
+            "type": "cortex-debug",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceFolder}/target/thumbv7m-none-eabi/debug/bare-metal-blinky",
+            "preLaunchTask": "Cargo build",
+
+
+            // --- server type openocd manually ---\\
+            // "servertype": "external",
+            // ------------------------------------//
+
+
+            // ------- server type openocd --------\\
+            "servertype": "openocd",
+            "device": "STM32F103C8T6",
+            // allows the display of the peripheral registers in VS Code
+            "svdFile": "svd/STM32F103xx.svd",
+            "configFiles": [
+                "interface/cmsis-dap.cfg",
+                "target/stm32f1x.cfg"
+            ],
+            "searchDir": [
+                "/usr/share/openocd/scripts"
+            ],
+            // ------------------------------------//
+
+
+            // --------- server type qemu ---------\\
+            // "servertype": "qemu",
+            // "cpu": "cortex-m3",
+            // "machine": "lm3s6965evb",
+            // ------------------------------------//
+
+
+            // GDB client settings
+            //
+            // "gdbPath": "arm-none-eabi-gdb",
+            // "gdbTarget": "localhost:3333",
+            // "runToEntryPoint": "main",
+            // "preLaunchCommands": [
+            //     "monitor init",
+            //     "monitor reset init",
+            //     "monitor halt",
+            // ],
+            // "postRestartCommands": [
+            //     "break main",
+            //     "continue"
+            // ],
+        }
+    ]
+}

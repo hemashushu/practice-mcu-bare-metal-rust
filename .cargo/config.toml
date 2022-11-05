@@ -1,0 +1,27 @@
+[build]
+target = "thumbv7m-none-eabi"
+
+# target = "thumbv6m-none-eabi"     # Cortex-M0 and Cortex-M0+              # RP2040
+# target = "thumbv7m-none-eabi"     # Cortex-M3                             # STM32F103
+# target = "thumbv7em-none-eabi"    # Cortex-M4 and Cortex-M7 (no FPU)
+# target = "thumbv7em-none-eabihf"  # Cortex-M4F and Cortex-M7F (with FPU)  # STM32F411
+
+[target.thumbv7m-none-eabi]
+runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+
+# custom flags for `rustc`
+#
+# 也可以写在文件 `./build.rs` 里，例如：
+#
+# ```
+# println!("cargo:rustc-link-arg=-Clink-arg=-Tsrc/linker.ld");
+# ```
+#
+# https://doc.rust-lang.org/cargo/reference/build-scripts.html#rustc-link-arg
+# https://doc.rust-lang.org/cargo/reference/config.html
+rustflags = [
+    "-C",
+    "link-arg=-Tlinker.ld",
+    # "-C", "other-arg=other-value"
+
+]
