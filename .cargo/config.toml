@@ -13,9 +13,13 @@ runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semiho
 #
 # 也可以写在文件 `./build.rs` 里，例如：
 #
-# ```
+# ```rust
 # println!("cargo:rustc-link-arg=-Clink-arg=-Tsrc/linker.ld");
 # ```
+#
+# 也可以直接在命令行里指定，例如：
+#
+# `$ cargo rustc -- -C link-arg=-Tlinker.ld`
 #
 # https://doc.rust-lang.org/cargo/reference/build-scripts.html#rustc-link-arg
 # https://doc.rust-lang.org/cargo/reference/config.html

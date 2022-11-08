@@ -4,6 +4,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use core::ptr;
+
 extern "C" {
     fn main() -> !;
 }
@@ -16,11 +18,9 @@ extern "C" {
 // ```
 //
 // Note:
-// `41040008` = `0x0800_0441`, the Rust `debug` profile build
-// the `.vector_table` the second entry (i.e. the `reset_handler`)
-// with one byte offset to the address for unknown reasons,
-// the correct address should be `0x0800_0440`.
-//
+// the second entry `41040008` (i.e. `0x0800_0441`) in the `.vector_table`
+// is the address of the function `ResetHandler`. note the function address is
+// 1 byte behind of `0x0800_0440` because of the executed in thumb mode.
 //
 // running check
 //
@@ -28,8 +28,7 @@ extern "C" {
 // 0x8000000:      0x20005000      0x08000441
 //
 #[no_mangle]
-pub extern "C" fn reset_handler() -> ! {
-
+pub extern "C" fn ResetHandler() -> ! {
     // $ arm-none-eabi-nm target/thumbv7m-none-eabi/debug/bare-metal-blinky
     //
     // ```
@@ -37,7 +36,7 @@ pub extern "C" fn reset_handler() -> ! {
     // 2000000c D __edata
     // 20000038 B __heap_start
     // 080004d8 T main
-    // 08000440 T reset_handler
+    // 08000440 T ResetHandler
     // 20000010 B __sbss
     // 20000000 D __sdata
     // 20000010 B SHOULD_LOCATED_BSS_SECTION
@@ -61,15 +60,31 @@ pub extern "C" fn reset_handler() -> ! {
     // 0x20000038  __heap_start
     // ```
     //
+    // These symbols come from `linker.ld`
+    //
+    // extern "C" {
+    //     fn __sbss(); // Start of .bss section
+    //     fn __ebss(); // End of .bss section
+    //     fn __sdata(); // Start of .data section
+    //     fn __edata(); // End of .data section
+    //     fn __sidata(); // Start of .rodata section
+    //     fn __stack_start(); // Stack bottom
+    //     fn __heap_start(); // Heap start
+    // }
+    //
+    // note:
+    // the name (e.g. `__sbss`) following the `function` is the variable address of the symbol.
+    // the name (e.g. `__sbss`) following the `static` is the variable value of the address.
+    // e.g. the `fn __sbss` value is u32 `0x2000_0100`, the `static __sbss` value is
+    // the memory content from address `0x2000_0100`.
     extern "C" {
-        // These symbols come from `linker.ld`
-        fn __sbss(); // Start of .bss section
-        fn __ebss(); // End of .bss section
-        fn __sdata(); // Start of .data section
-        fn __edata(); // End of .data section
-        fn __sidata(); // Start of .rodata section
-        fn __stack_start(); // Stack bottom
-        fn __heap_start(); // Heap start
+        static mut __sbss: u8; // Start of .bss section
+        static __ebss: u8; // End of .bss section
+        static mut __sdata: u8; // Start of .data section
+        static __edata: u8; // End of .data section
+        static __sidata: u8; // Start of .rodata section
+        static __stack_start: u8; // Stack bottom
+        static __heap_start: u8; // Heap start
     }
 
     // set initial stack pointer
@@ -91,7 +106,7 @@ pub extern "C" fn reset_handler() -> ! {
     // ```
 
     // for testing purposes only
-    {
+    unsafe {
         // running check
         //
         // (gdb) set output-radix 16
@@ -105,13 +120,21 @@ pub extern "C" fn reset_handler() -> ! {
         // j = 0x20000038
         // i = 0x20000010
         //
-        let i = __sbss as u32;
-        let j = __ebss as u32;
-        let k = __sdata as u32;
-        let l = __edata as u32;
-        let m = __stack_start as u32;
-        let n = __sidata as u32;
-        let o = __heap_start as u32;
+        // (gdb) i locals
+        // o = 0x20000038
+        // n = 0x8001738
+        // m = 0x20005000
+        // l = 0x2000000c
+        // k = 0x20000000 <SHOULD_LOCATED_IN_DATA_SECTION>
+        // j = 0x20000038
+        // i = 0x20000010 <SHOULD_LOCATED_BSS_SECTION>
+        let i = &__sbss;
+        let j = &__ebss;
+        let k = &__sdata;
+        let l = &__edata;
+        let m = &__stack_start;
+        let n = &__sidata;
+        let o = &__heap_start;
         let r = 0;
     }
 
@@ -131,20 +154,33 @@ pub extern "C" fn reset_handler() -> ! {
     //
     // note::
     // `write_volatile` means volatile write of a memory
+    //
+    // unsafe {
+    //     (&__sbss as *const u8 as u32..&__ebss as *const u8 as u32)
+    //         .for_each(|dest_addr| (dest_addr as *mut u8).write_volatile(0))
+    // }
+    //
     unsafe {
-        (__sbss as u32..__ebss as u32)
-            .for_each(|dest_addr| (dest_addr as *mut u8).write_volatile(0))
+        let count = &__ebss as *const u8 as usize - &__sbss as *const u8 as usize;
+        ptr::write_bytes(&mut __sbss as *mut u8, 0, count);
     }
 
     // initialize `Data`
     // copy the content of `.data` from `flash` to `RAM`
+    //
+    // unsafe {
+    //     let data_source_addr = &__sidata as *const u8 as u32;
+    //     (&__sdata as *const u8 as u32..&__edata as *const u8 as u32)
+    //         .enumerate()
+    //         .for_each(|(index, dest_addr)| {
+    //             (dest_addr as *mut u8)
+    //                 .write_volatile(*((index as u32 + data_source_addr) as *const u8))
+    //         })
+    // }
+
     unsafe {
-        (__sdata as u32..__edata as u32)
-            .enumerate()
-            .for_each(|(index, dest_addr)| {
-                (dest_addr as *mut u8)
-                    .write_volatile(*((index as u32 + __sidata as u32) as *const u8))
-            })
+        let count = &__edata as *const u8 as usize - &__sdata as *const u8 as usize;
+        ptr::copy_nonoverlapping(&__sidata as *const u8, &mut __sdata as *mut u8, count);
     }
 
     // running check
@@ -172,29 +208,63 @@ pub union Vector {
     handler: unsafe extern "C" fn(),
 }
 
+// PM0214 2.3.2 Exception types
+// Table 17. Properties of the different exception types
 extern "C" {
+    /**
+     * A NonMaskable Interrupt (NMI) can be signalled by a peripheral or
+     * triggered by software. This is the highest priority exception other than
+     * reset. It is permanently enabled and has a fixed priority of -2. NMIs
+     * cannot be:
+     *
+     * - Masked or prevented from activation by any other exception
+     * - Preempted by any exception other than Reset.
+     */
     fn NMI();
-    fn HardFault(); // fn HardFaultTrampoline() ;
+
+    /**
+     * A hard fault is an exception that occurs because of an error during
+     * exception processing, or because an exception cannot be managed by
+     * any other exception mechanism. Hard faults have a fixed priority of -1,
+     * meaning they have higher priority than any exception with configurable
+     * priority.
+     */
+    fn HardFault();
     fn MemManage();
     fn BusFault();
     fn UsageFault();
+
+    /**
+     * A supervisor call (SVC) is an exception that is triggered by the SVC
+     * instruction. In an OS environment, applications can use SVC
+     * instructions to access OS kernel functions and device drivers.
+     */
     fn SVCall();
+
+    /**
+     * PendSV is an interrupt-driven request for system-level service. In an
+     * OS environment, use PendSV for context switching when no other
+     * exception is active.
+     */
     fn PendSV();
+
+    /**
+     * A SysTick exception is an exception the system timer generates when
+     * it reaches zero. Software can also generate a SysTick exception. In an
+     * OS environment, the processor can use this exception as system tick.
+     */
     fn SysTick();
 }
 
 #[link_section = ".vector_table.reset_vector"]
 #[no_mangle]
-pub static RESET_VECTOR: extern "C" fn() -> ! = reset_handler;
+pub static RESET_VECTOR: extern "C" fn() -> ! = ResetHandler;
 
 #[link_section = ".vector_table.exceptions"]
 #[no_mangle]
 pub static EXCEPTIONS: [Vector; 14] = [
     Vector { handler: NMI },
     Vector { handler: HardFault },
-    // Vector {
-    //     handler: HardFaultTrampoline,
-    // },
     Vector { handler: MemManage },
     Vector { handler: BusFault },
     Vector {
@@ -209,9 +279,16 @@ pub static EXCEPTIONS: [Vector; 14] = [
     Vector { reserved: 0 },
     Vector { handler: PendSV },
     Vector { handler: SysTick },
+
+    // IRQ starts here
+
+    //  An interrupt, or IRQ, is an exception signalled by a peripheral, or
+    //  generated by a software request. All interrupts are asynchronous to
+    //  instruction execution. In the system, peripherals use interrupts to
+    //  communicate with the processor.
 ];
 
 #[no_mangle]
-pub extern "C" fn default_exception_handler() -> ! {
+pub extern "C" fn DefaultExceptionHandler() -> ! {
     loop {}
 }

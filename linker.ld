@@ -1,5 +1,5 @@
 /* the entry point */
-ENTRY(reset_handler);
+ENTRY(ResetHandler);
 
 /* memory layout of STM32F103C8T6 */
 MEMORY
@@ -12,15 +12,20 @@ MEMORY
  * set LHS = RHS only when the left symbol does not exists,
  * so the RHS is the default value.
  */
-PROVIDE(NMI = default_exception_handler);
-PROVIDE(HardFault = default_exception_handler);
-PROVIDE(MemManage = default_exception_handler);
-PROVIDE(BusFault = default_exception_handler);
-PROVIDE(UsageFault = default_exception_handler);
-PROVIDE(SVCall = default_exception_handler);
-PROVIDE(PendSV = default_exception_handler);
-PROVIDE(SysTick = default_exception_handler);
+PROVIDE(NMI = DefaultExceptionHandler);
+PROVIDE(HardFault = DefaultExceptionHandler);
+PROVIDE(MemManage = DefaultExceptionHandler);
+PROVIDE(BusFault = DefaultExceptionHandler);
+PROVIDE(UsageFault = DefaultExceptionHandler);
+PROVIDE(SVCall = DefaultExceptionHandler);
+PROVIDE(PendSV = DefaultExceptionHandler);
+PROVIDE(SysTick = DefaultExceptionHandler);
 
+/*
+ * note:
+ * use the `EXTERN` statement to preserve symbols that NOT directly or
+ * indirectly referenced by the entry point.
+ */
 EXTERN(RESET_VECTOR);
 EXTERN(EXCEPTIONS);
 
@@ -43,16 +48,16 @@ EXTERN(EXCEPTIONS);
  * ```
  *
  * - `.vector_table` starts from LMA `0x0800_0000`
- * - `.text` starts from LMA `B` (`B` = LOADADDR(.vector_table) + SIZEOF(.vector_table))
- * - `.rodata` starts from LMA `C` (`C` = LOADADDR(.text) + SIZEOF(.text))
- * - `.data` starts from VMA 0x2000_0000 and LMA `D` (`D` = LOADADDR(.rodata) + SIZEOF(.rodata))
+ * - `.text` starts from LMA `B` (`B` = ADDR(.vector_table) + SIZEOF(.vector_table))
+ * - `.rodata` starts from LMA `C` (`C` = ADDR(.text) + SIZEOF(.text))
+ * - `.data` starts from VMA 0x2000_0000 and LMA `D` (`D` = ADDR(.rodata) + SIZEOF(.rodata))
  * - `.bss` starts from VMA `E` (`E` = ADDR(.data) + SIZEOF(.data))
  */
 
 SECTIONS
 {
   /* the stack point is the end address of RAM, i.e. `0x20000000 + 0x5000` */
-  PROVIDE(__stack_start = ORIGIN(RAM) + LENGTH(RAM));
+  __stack_start = ORIGIN(RAM) + LENGTH(RAM);
 
   /*
    * PM0214 Programming manual
@@ -65,7 +70,14 @@ SECTIONS
     /* first entry: the initial Stack Pointer (SP) value */
     LONG(__stack_start);
 
-    /* second entry: reset handler */
+    /*
+     * second entry: reset handler
+     *
+     * note:
+     * use the `KEEP` statement to force the linker to insert
+     * all input sections named, otherwise the linker will
+     * discard the unused sections
+     */
     KEEP(*(.vector_table.reset_vector));
 
     /* the next 14 entries are exception vectors */
@@ -84,6 +96,10 @@ SECTIONS
     *(.rodata .rodata.*);
   } > FLASH
 
+  /*
+   * set the Load Memory Address (LMA) of the `.data` section by
+   * `AT(...)` or `AT > FLASH`
+   */
   .data : ALIGN(4) /* AT(ADDR(.rodata) + SIZEOF(.rodata)) */
   {
     __sdata = .;
@@ -107,6 +123,6 @@ SECTIONS
   /* Discarded sections */
   /DISCARD/ :
   {
-    *(.ARM.exidx .ARM.exidx.*);
+    *(.ARM.exidx .ARM.exidx.* .ARM.extab.*);
   }
 }

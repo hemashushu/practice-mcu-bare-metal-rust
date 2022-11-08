@@ -1,5 +1,5 @@
 [toolchain]
-# channel = "stable-x86_64-unknown-linux-gnu"
-channel = "nightly-x86_64-unknown-linux-gnu"
+channel = "stable"
+# channel = "nightly"
 components = [ "llvm-tools-preview", "rust-src", "rustfmt"]
 targets = [ "thumbv7m-none-eabi" ]
