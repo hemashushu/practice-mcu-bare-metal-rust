@@ -25,14 +25,19 @@
 mod types;
 mod vector;
 
-use core::{arch::asm, panic::PanicInfo};
+use core::{
+    arch::asm,
+    fmt::{self, Write},
+    panic::PanicInfo,
+};
 
 use types::{
-    getFlashRegister, getGPIORegister, getRCCRegister, getSysTickRegister, get_bit_range_value,
-    AHBPrescTable, Pin, Port, FLASH_ACR, FLASH_ACR_LATENCY, GPIO_CNF, GPIO_CNF_OUTPUT, GPIO_MODE,
-    HSE_VALUE, HSI_VALUE, PERIPHERAL_BUS_2_CLOCK_ENABLE, RCC_CFGR, RCC_CFGR_PLLMUL,
-    RCC_CFGR_PLLSRC, RCC_CFGR_PLLXTPRE, RCC_CFGR_PPRE1, RCC_CFGR_SW, RCC_CFGR_SWS, RCC_CR,
-    RCC_CR_HSEON, RCC_CR_PLLON, SYS_TICK_CTRL,
+    getGPIORegister, get_bit_range_value, get_flash_register, get_rcc_register,
+    get_systick_register, get_usart1_register, AHBPrescTable, Pin, Port, USART_Register, FLASH_ACR,
+    FLASH_ACR_LATENCY, GPIO_CNF, GPIO_CNF_OUTPUT, GPIO_MODE, HSE_VALUE, HSI_VALUE,
+    RCC_APB2_CLOCK_ENABLE, RCC_CFGR, RCC_CFGR_PLLMUL, RCC_CFGR_PLLSRC, RCC_CFGR_PLLXTPRE,
+    RCC_CFGR_PPRE1, RCC_CFGR_SW, RCC_CFGR_SWS, RCC_CR, RCC_CR_HSEON, RCC_CR_PLLON, SYS_TICK_CTRL,
+    USART_CR1, USART_SR,
 };
 
 // The following variables are used for testing purposes only:
@@ -101,8 +106,10 @@ pub extern "C" fn bare_main() -> ! {
         let r = 0;
     }
 
-    // for testing purpose only
+    // set clock
     init_clock();
+
+    // get the current system clock value
     let clock = get_system_core_clock();
     update_system_core_clock(clock);
 
@@ -151,6 +158,11 @@ pub extern "C" fn bare_main() -> ! {
     //     delayMilliseconds(500);
     // }
 
+    let baudrate = 115200;
+    init_uart1(baudrate);
+
+    let usart1_register = unsafe { &mut *get_usart1_register() };
+
     let period = 500; // 500 ms
     let mut expired_time = get_next_expired_time(get_current_time(), period);
     let mut builtin_led_state = false;
@@ -158,14 +170,36 @@ pub extern "C" fn bare_main() -> ! {
     loop {
         // toggle builtin LED
         if is_time_expired(expired_time, get_current_time()) {
-            gpio_write(&builtin_led_pin, builtin_led_state);
             builtin_led_state = !builtin_led_state;
             expired_time = get_next_expired_time(get_current_time(), period);
+
+            gpio_write(&builtin_led_pin, builtin_led_state);
+
+            if builtin_led_state {
+                uart_write_str(usart1_register, "on\r\n");
+            } else {
+                uart_write_str(usart1_register, "off\r\n");
+            }
         }
 
         // change external LED by the button status
         let state = gpio_read(&button_pin);
         gpio_write(&external_led_pin, !state);
+
+        // check user input
+        //         let c = {
+        //             if uart_read_ready(usart1_register) {
+        //                 Some(uart_read_byte(usart1_register))
+        //             } else {
+        //                 None
+        //             }
+        //         };
+        //
+        //         if let Some(b) = c {
+        //             uart_write_str(usart1_register, "input is:");
+        //             uart_write_byte(usart1_register, b);
+        //             uart_write_str(usart1_register, "\r\n");
+        //         }
     }
 }
 
@@ -207,18 +241,19 @@ fn gpio_init(pin: &Pin, gpio_mode: GPIO_MODE, gpio_cnf: GPIO_CNF) {
 
 fn gpio_set_mode(pin: &Pin, gpio_mode: GPIO_MODE, gpio_cnf: GPIO_CNF) {
     // RM0008 8.3.7 APB2 peripheral clock enable register (RCC_APB2ENR)
-    let rcc_register = unsafe { &mut *getRCCRegister() };
+    let rcc_register = unsafe { &mut *get_rcc_register() };
 
     let pbus2_enable_value = match pin.port {
-        Port::A => PERIPHERAL_BUS_2_CLOCK_ENABLE::GPIO_PORT_A_ENABLE,
-        Port::B => PERIPHERAL_BUS_2_CLOCK_ENABLE::GPIO_PORT_B_ENABLE,
-        Port::C => PERIPHERAL_BUS_2_CLOCK_ENABLE::GPIO_PORT_C_ENABLE,
-        Port::D => PERIPHERAL_BUS_2_CLOCK_ENABLE::GPIO_PORT_D_ENABLE,
-        Port::E => PERIPHERAL_BUS_2_CLOCK_ENABLE::GPIO_PORT_E_ENABLE,
-        Port::F => PERIPHERAL_BUS_2_CLOCK_ENABLE::GPIO_PORT_F_ENABLE,
-        Port::G => PERIPHERAL_BUS_2_CLOCK_ENABLE::GPIO_PORT_G_ENABLE,
+        Port::A => RCC_APB2_CLOCK_ENABLE::GPIO_PORT_A_ENABLE,
+        Port::B => RCC_APB2_CLOCK_ENABLE::GPIO_PORT_B_ENABLE,
+        Port::C => RCC_APB2_CLOCK_ENABLE::GPIO_PORT_C_ENABLE,
+        Port::D => RCC_APB2_CLOCK_ENABLE::GPIO_PORT_D_ENABLE,
+        Port::E => RCC_APB2_CLOCK_ENABLE::GPIO_PORT_E_ENABLE,
+        Port::F => RCC_APB2_CLOCK_ENABLE::GPIO_PORT_F_ENABLE,
+        Port::G => RCC_APB2_CLOCK_ENABLE::GPIO_PORT_G_ENABLE,
     };
 
+    // enable GPIOx clock
     rcc_register.APB2ENR |= pbus2_enable_value as u32;
 
     let (crl_idx, relative_number) = match is_high_pin(pin.number) {
@@ -274,20 +309,20 @@ fn systick_init(ticks: u32) {
     }
 
     // PM0214 4.5.1 SysTick control and status register (STK_CTRL)
-    let systick_register = unsafe { &mut *getSysTickRegister() };
+    let systick_register = unsafe { &mut *get_systick_register() };
+
+    systick_register.LOAD = ticks - 1; // the ending number
+    systick_register.VAL = 0; // the start number
 
     systick_register.CTRL = SYS_TICK_CTRL::ENABLE as u32
         | SYS_TICK_CTRL::TICKINT as u32
         | SYS_TICK_CTRL::CLKSOURCE as u32;
 
-    systick_register.LOAD = ticks - 1; // the ending number
-    systick_register.VAL = 0; // the start number
-
     // RM0008 8.3.7 APB2 peripheral clock enable register (RCC_APB2ENR)
-    let rcc_register = unsafe { &mut *getRCCRegister() };
-
+    // let rcc_register = unsafe { &mut *getRCCRegister() };
+    //
     // enable timer clock
-    rcc_register.APB2ENR |= PERIPHERAL_BUS_2_CLOCK_ENABLE::TIMER1_ENABLE as u32;
+    // rcc_register.APB2ENR |= PERIPHERAL_BUS_2_CLOCK_ENABLE::TIMER1_ENABLE as u32;
 }
 
 // the current tick value (unit: ms)
@@ -320,7 +355,7 @@ fn get_system_core_clock() -> u32 {
     let mut clock: u32 = 0;
 
     // Get SYSCLK source
-    let rcc_register = unsafe { &mut *getRCCRegister() };
+    let rcc_register = unsafe { &mut *get_rcc_register() };
     let sws = rcc_register.CFGR & RCC_CFGR::SWS as u32;
 
     if sws == RCC_CFGR_SWS::HSI as u32 {
@@ -365,24 +400,24 @@ fn get_system_core_clock() -> u32 {
     clock >> prescaler
 }
 
-// Conf clock : 72MHz using HSE 8MHz crystal w/ PLL X 9 (8MHz x 9 = 72MHz)
+// set system clock to 72MHz
 fn init_clock() {
-    let flash_register = unsafe { &mut *getFlashRegister() };
+    let flash_register = unsafe { &mut *get_flash_register() };
 
-    // 1. Two wait states
+    // 1. set flash latency to `2 wait states`
     flash_register.ACR &= !(FLASH_ACR::LATENCY as u32);
     flash_register.ACR |= FLASH_ACR_LATENCY::Two as u32;
 
-    let rcc_register = unsafe { &mut *getRCCRegister() };
+    let rcc_register = unsafe { &mut *get_rcc_register() };
 
-    // 2. prescale AHB1 = HCLK/2
+    // 2. set APB low-speed prescaler to `HCLK / 2`
     rcc_register.CFGR &= !(RCC_CFGR::PPRE1 as u32);
     rcc_register.CFGR |= RCC_CFGR_PPRE1::DIVIDED_2 as u32;
 
     // 3. enable HSE clock
     rcc_register.CR |= RCC_CR_HSEON::ON as u32;
 
-    // 4. wait for the HSEREADY flag
+    // 4. wait for the HSE READY flag
     while (rcc_register.CR & RCC_CR::HSERDY as u32) == 0 {
         // note:
         // here need to write some statements, or rustc may ignore the condition and
@@ -401,7 +436,7 @@ fn init_clock() {
     // 7. enable the PLL
     rcc_register.CR |= RCC_CR_PLLON::ON as u32;
 
-    // 8. wait for the PLLRDY flag
+    // 8. wait for the PLL READY flag
     while (rcc_register.CR & RCC_CR::PLLRDY as u32) == 0 {
         spin_one();
     }
@@ -415,5 +450,88 @@ fn init_clock() {
         spin_one();
     }
 
-    // SystemCoreClockUpdate(); // 11. calculate the SYSCLOCK value
+    // note:
+    // It is necessary to update the `SystemCoreClock` variable
+}
+
+fn init_uart1(baudrate: u32) {
+    // STM32F103 datasheet Table 5. Medium-density STM32F103xx pin definitions
+    // Pinouts
+    // - PA9: USART1_TX
+    // - PA10: USART1_RX
+    //
+    // note:
+    // the wire connections between MCU and USB-UART chip (CP2102, ch340 etc.)
+    // MCU          CP210x
+    // TX  <-------> RX
+    // RX  <-------> TX
+    // GND <-------> GND
+    // 3.3 <-------> 3.3V
+
+    // to check out the UART output, run the following command in host:
+    // `$ picocom -b 115200 /dev/ttyUSB1`
+    // the USB-UART device path may be `/dev/ttyUSB0` or other else.
+    // press `Ctrl+a, Ctrl+x` to exit `picocom`.
+
+    let tx_pin: Pin = Pin::new(Port::A, 9);
+    let rx_pin: Pin = Pin::new(Port::A, 10);
+
+    // TX (PA9) pin is configured as 50MHz output, push-pull and alternate function.
+    gpio_set_mode(
+        &tx_pin,
+        GPIO_MODE::GPIO_MODE_OUTPUT_10MHZ,
+        GPIO_CNF::Output(GPIO_CNF_OUTPUT::GPIO_CNF_OUTPUT_AF_PUSH_PULL),
+    );
+    // RX (PA10) pin is configured input mode and floating.
+    gpio_set_mode(
+        &rx_pin,
+        GPIO_MODE::GPIO_MODE_INPUT,
+        GPIO_CNF::Input(types::GPIO_CNF_INPUT::GPIO_CNF_INPUT_FLOATING),
+    );
+
+    // enable USART1 clock
+    let rcc_register = unsafe { &mut *get_rcc_register() };
+    rcc_register.APB2ENR |= RCC_APB2_CLOCK_ENABLE::USART1_ENABLE as u32;
+
+    // configure USART1 registers
+    let baud = get_system_core_clock() / baudrate;
+    let usart1_register = unsafe { &mut *get_usart1_register() };
+
+    usart1_register.BRR = baud;
+    usart1_register.CR1 = USART_CR1::TE as u32 | USART_CR1::RE as u32 | USART_CR1::UE as u32;
+}
+
+fn uart_write_byte(usart_register: &mut USART_Register, byte: u8) {
+    // while (usart_register.SR & USART_SR::TC as u32) == 0 {
+    //     spin(1);
+    // }
+
+    usart_register.DR = byte as u32;
+
+    // 19 Universal synchronous asynchronous receiver transmitter (USART)
+    // Figure 167. USART block diagram
+    //
+    // waiting for the data transfer from `transmit data register (TDR)` to
+    // `transmit shift register`
+    while (usart_register.SR & USART_SR::TXE as u32) == 0 {
+        spin(1);
+    }
+}
+
+fn uart_write_buf(usart_register: &mut USART_Register, buf: &[u8], len: usize) {
+    (0..len).for_each(|idx| uart_write_byte(usart_register, buf[idx]));
+}
+
+fn uart_write_str(usart_register: &mut USART_Register, s: &str) {
+    let bytes = s.as_bytes();
+    uart_write_buf(usart_register, bytes, bytes.len());
+}
+
+fn uart_read_ready(usart_register: &USART_Register) -> bool {
+    // If RXNE bit is set, data is ready
+    (usart_register.SR & USART_SR::RXNE as u32) != 0
+}
+
+fn uart_read_byte(usart_register: &USART_Register) -> u8 {
+    (usart_register.DR & 255) as u8
 }

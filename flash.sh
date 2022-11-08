@@ -18,6 +18,10 @@
 #    `$ cargo flash --release --chip STM32F301C6Tx``
 
 # # flash by OpenOCD
+#
+# note:
+# it seems there are some bugs with the 'release' profile, such as unable
+# to configure the system clock, and UART also does not work properly.
 cargo clean
-cargo build --release
-openocd -f interface/cmsis-dap.cfg  -f target/stm32f1x.cfg -s "/usr/share/openocd/scripts" -c "program target/thumbv7m-none-eabi/release/bare-metal-blinky verify reset exit"
+cargo build
+openocd -f interface/cmsis-dap.cfg  -f target/stm32f1x.cfg -s "/usr/share/openocd/scripts" -c "program target/thumbv7m-none-eabi/debug/bare-metal-blinky verify reset exit"

@@ -143,7 +143,7 @@ pub fn getGPIORegister(port: Port) -> *mut GPIO_Register {
 
 // RM0008 7.3.7 APB2 peripheral clock enable register (RCC_APB2ENR)
 #[repr(u32)]
-pub enum PERIPHERAL_BUS_2_CLOCK_ENABLE {
+pub enum RCC_APB2_CLOCK_ENABLE {
     AFIO_ENABLE = bit_to_u32!(0),
     // bit 1 reserved
     GPIO_PORT_A_ENABLE = bit_to_u32!(2),
@@ -195,7 +195,7 @@ pub struct RCC_Register {
 
 // RM0008 3.3 Memory map
 // 0x4002 1000 - 0x4002 13FF Reset and clock control RCC
-pub fn getRCCRegister() -> *mut RCC_Register {
+pub fn get_rcc_register() -> *mut RCC_Register {
     let addr: u32 = 0x4002_1000;
     addr as *mut RCC_Register
 }
@@ -219,7 +219,7 @@ pub struct SysTick_Register {
 // PM0214 4.5 SysTick timer (STK)
 // Table 54. System timer registers summary
 // 0xE000E010 STK_CTRL
-pub fn getSysTickRegister() -> *mut SysTick_Register {
+pub fn get_systick_register() -> *mut SysTick_Register {
     let addr: u32 = 0xe000_e010;
     addr as *mut SysTick_Register
 }
@@ -433,7 +433,7 @@ pub struct Flash_Register {
     pub WRPR: u32,
 }
 
-pub fn getFlashRegister() -> *mut Flash_Register {
+pub fn get_flash_register() -> *mut Flash_Register {
     let addr: u32 = 0x4002_2000;
     addr as *mut Flash_Register
 }
@@ -445,9 +445,6 @@ pub enum FLASH_ACR {
     // Bits 2:0 LATENCY: Latency
     // These bits represent the ratio of the SYSCLK (system clock) period to the Flash access
     // time.
-    // 000 Zero wait state, if 0 < SYSCLK≤ 24 MHz
-    // 001 One wait state, if 24 MHz < SYSCLK ≤ 48 MHz
-    // 010 Two wait states, if 48 MHz < SYSCLK ≤ 72 MHz
     LATENCY = bit_range_to_u32!(0, 3),
 
     // Bit 3 HLFCYA: Flash half cycle access enable
@@ -469,7 +466,99 @@ pub enum FLASH_ACR {
 
 #[repr(u32)]
 pub enum FLASH_ACR_LATENCY {
-    Zero = 0b00, // 0 wait state, if 0 < SYSCLK≤ 24 MHz
-    One = 0b01,  // 1 wait state, if 24 MHz < SYSCLK ≤ 48 MHz
-    Two = 0b10,  // 2 wait states, if 48 MHz < SYSCLK ≤ 72 MHz
+    // PM0075 3.1 Flash access control register (FLASH_ACR)
+    // 000 Zero wait state, if 0 < SYSCLK≤ 24 MHz
+    // 001 One wait state, if 24 MHz < SYSCLK ≤ 48 MHz
+    // 010 Two wait states, if 48 MHz < SYSCLK ≤ 72 MHz
+    //
+    // note:
+    // in project CMSIS/Device/STM32F1xx/include/stm32f103xb.h, these value is define as another values:
+    // #define FLASH_ACR_LATENCY_0                 (0x1U << FLASH_ACR_LATENCY_Pos)    /*!< 0x00000001 */
+    // #define FLASH_ACR_LATENCY_1                 (0x2U << FLASH_ACR_LATENCY_Pos)    /*!< 0x00000002 */
+    // #define FLASH_ACR_LATENCY_2                 (0x4U << FLASH_ACR_LATENCY_Pos)    /*!< 0x00000004 */
+    Zero = 0b000,
+    One = 0b001,
+    Two = 0b010,
+}
+
+// RM0008 27.6.8 USART register map
+#[repr(C)]
+pub struct USART_Register {
+    pub SR: u32,
+    pub DR: u32,
+    pub BRR: u32,
+    pub CR1: u32,
+    pub CR2: u32,
+    pub CR3: u32,
+    pub GTPR: u32,
+}
+
+// RM0008 27.6.4 Control register 1 (USART_CR1)
+#[repr(u32)]
+pub enum USART_CR1 {
+    SBK = bit_to_u32!(0),
+    RWU = bit_to_u32!(1),
+    RE = bit_to_u32!(2), // Receiver enable
+    TE = bit_to_u32!(3), // Transmitter enable
+
+    IDLEIE = bit_to_u32!(4),
+    RXNEIE = bit_to_u32!(5),
+    TCIE = bit_to_u32!(6),
+    TXEIE = bit_to_u32!(7),
+
+    PEIE = bit_to_u32!(8),
+    PS = bit_to_u32!(9),
+    PCE = bit_to_u32!(10),
+    WAKE = bit_to_u32!(11),
+
+    M = bit_to_u32!(12),
+    UE = bit_to_u32!(13), // USART enable
+}
+
+// RM0008 27.6.1 Status register (USART_SR)
+#[repr(u32)]
+pub enum USART_SR {
+    PE = bit_to_u32!(0),
+    FE = bit_to_u32!(1),
+    NE = bit_to_u32!(2),
+    ORE = bit_to_u32!(3),
+
+    IDLE = bit_to_u32!(4),
+
+    // RXNE: Read data register not empty
+    // This bit is set by hardware when the content of the RDR shift register has been transferred to
+    // the USART_DR register. An interrupt is generated if RXNEIE=1 in the USART_CR1 register.
+    // It is cleared by a read to the USART_DR register. The RXNE flag can also be cleared by
+    // writing a zero to it. This clearing sequence is recommended only for multibuffer
+    // communication.
+    // 0: Data is not received
+    // 1: Received data is ready to be read.
+    RXNE = bit_to_u32!(5),
+
+    TC = bit_to_u32!(6),
+
+    // TXE: Transmit data register empty
+    // This bit is set by hardware when the content of the TDR register has been transferred into
+    // the shift register. An interrupt is generated if the TXEIE bit =1 in the USART_CR1 register. It
+    // is cleared by a write to the USART_DR register.
+    // 0: Data is not transferred to the shift register
+    // 1: Data is transferred to the shift register)
+    // Note: This bit is used during single buffer transmission.
+    TXE = bit_to_u32!(7),
+
+    LBD = bit_to_u32!(8),
+    CTS = bit_to_u32!(9),
+}
+
+// RM0008 3.3 Memory map
+// Table 3. Register boundary addresses
+// 0x4001 3800 - 0x4001 3BFF USART1
+// 0x4000 5000 - 0x4000 53FF UART5
+// 0x4000 4C00 - 0x4000 4FFF UART4
+// 0x4000 4800 - 0x4000 4BFF USART3
+// 0x4000 4400 - 0x4000 47FF USART2
+
+pub fn get_usart1_register() -> *mut USART_Register {
+    let addr: u32 = 0x4001_3800;
+    addr as *mut USART_Register
 }
