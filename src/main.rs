@@ -107,7 +107,7 @@ pub extern "C" fn bare_main() -> ! {
     }
 
     // set clock
-    init_clock();
+    // init_clock();
 
     // get the current system clock value
     let clock = get_system_core_clock();
@@ -158,7 +158,7 @@ pub extern "C" fn bare_main() -> ! {
     //     delayMilliseconds(500);
     // }
 
-    let baudrate = 115200;
+    let baudrate = 9600;
     init_uart1(baudrate);
 
     let usart1_register = unsafe { &mut *get_usart1_register() };
@@ -186,20 +186,24 @@ pub extern "C" fn bare_main() -> ! {
         let state = gpio_read(&button_pin);
         gpio_write(&external_led_pin, !state);
 
+        if !state {
+            uart_write_str(usart1_register, "press\r\n");
+        }
+
         // check user input
-        //         let c = {
-        //             if uart_read_ready(usart1_register) {
-        //                 Some(uart_read_byte(usart1_register))
-        //             } else {
-        //                 None
-        //             }
-        //         };
-        //
-        //         if let Some(b) = c {
-        //             uart_write_str(usart1_register, "input is:");
-        //             uart_write_byte(usart1_register, b);
-        //             uart_write_str(usart1_register, "\r\n");
-        //         }
+        let input_char = {
+            if uart_read_ready(usart1_register) {
+                Some(uart_read_byte(usart1_register))
+            } else {
+                None
+            }
+        };
+
+        if let Some(b) = input_char {
+            uart_write_str(usart1_register, "input is ");
+            uart_write_byte(usart1_register, b);
+            uart_write_str(usart1_register, "\r\n");
+        }
     }
 }
 
@@ -461,8 +465,9 @@ fn init_uart1(baudrate: u32) {
     // - PA10: USART1_RX
     //
     // note:
-    // the wire connections between MCU and USB-UART chip (CP2102, ch340 etc.)
-    // MCU          CP210x
+    // The connection wires between the MCU and USB-TTL(CP2102, CH340 etc.) sometimes
+    // need to have the TX and RX crossed, e.g.
+    // MCU          CP210x/CH340
     // TX  <-------> RX
     // RX  <-------> TX
     // GND <-------> GND
@@ -494,18 +499,16 @@ fn init_uart1(baudrate: u32) {
     rcc_register.APB2ENR |= RCC_APB2_CLOCK_ENABLE::USART1_ENABLE as u32;
 
     // configure USART1 registers
-    let baud = get_system_core_clock() / baudrate;
+    let clock = get_system_core_clock();
+    let baud = clock / baudrate;
     let usart1_register = unsafe { &mut *get_usart1_register() };
 
+    // usart1_register.CR1 = 0;
     usart1_register.BRR = baud;
     usart1_register.CR1 = USART_CR1::TE as u32 | USART_CR1::RE as u32 | USART_CR1::UE as u32;
 }
 
 fn uart_write_byte(usart_register: &mut USART_Register, byte: u8) {
-    // while (usart_register.SR & USART_SR::TC as u32) == 0 {
-    //     spin(1);
-    // }
-
     usart_register.DR = byte as u32;
 
     // 19 Universal synchronous asynchronous receiver transmitter (USART)
