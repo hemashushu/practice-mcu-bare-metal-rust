@@ -38,3 +38,10 @@
   STM32F101xx, STM32F102xx, STM32F103xx, STM32F105xx and
   STM32F107xx advanced Arm®-based 32-bit MCUs
   https://www.st.com/resource/en/reference_manual/cd00171190-stm32f101xx-stm32f102xx-stm32f103xx-stm32f105xx-and-stm32f107xx-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
+
+- Bare metal programming guide (C lang on STM32F429)
+  https://github.com/cpq/bare-metal-programming-guide
+
+- 对于想进一步实现更多功能的人来说，可以参考项目 libopencm3
+  https://github.com/libopencm3/libopencm3
+
