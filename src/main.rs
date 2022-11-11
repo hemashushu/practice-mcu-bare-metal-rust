@@ -4,41 +4,44 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-//! Documents:
+//! Reference Documents:
 //!
-//! - PM0214
-//!   Programming manual
+//! - PM0214 Programming manual
 //!   STM32 Cortex®-M4 MCUs and MPUs programming manual
+//!   https://www.st.com/resource/en/programming_manual/pm0214-stm32-cortexm4-mcus-and-mpus-programming-manual-stmicroelectronics.pdf
 //!
-//! - STM32F103c8
-//!   Datasheet
+//! - STM32F103c8 Datasheet
+//!   https://www.st.com/resource/en/datasheet/cd00161566.pdf
 //!
-//! - RM0008
-//!   Reference manual
+//! - RM0008 Reference manual
 //!   STM32F101xx, STM32F102xx, STM32F103xx, STM32F105xx and
 //!   STM32F107xx advanced Arm®-based 32-bit MCUs
+//!   https://www.st.com/resource/en/reference_manual/cd00171190-stm32f101xx-stm32f102xx-stm32f103xx-stm32f105xx-and-stm32f107xx-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
 
 #![no_std]
 #![no_main]
 
 #[macro_use]
-mod types;
+mod type_common;
+mod type_gpio;
+mod type_rcc;
+mod type_systick;
+mod type_usart;
 mod vector;
 
-use core::{
-    arch::asm,
-    fmt::{self, Write},
-    panic::PanicInfo,
-};
+use core::{arch::asm, panic::PanicInfo};
 
-use types::{
-    getGPIORegister, get_bit_range_value, get_flash_register, get_rcc_register,
-    get_systick_register, get_usart1_register, AHBPrescTable, Pin, Port, USART_Register, FLASH_ACR,
-    FLASH_ACR_LATENCY, GPIO_CNF, GPIO_CNF_OUTPUT, GPIO_MODE, HSE_VALUE, HSI_VALUE,
-    RCC_APB2_CLOCK_ENABLE, RCC_CFGR, RCC_CFGR_PLLMUL, RCC_CFGR_PLLSRC, RCC_CFGR_PLLXTPRE,
-    RCC_CFGR_PPRE1, RCC_CFGR_SW, RCC_CFGR_SWS, RCC_CR, RCC_CR_HSEON, RCC_CR_PLLON, SYS_TICK_CTRL,
-    USART_CR1, USART_SR,
-};
+use type_common::{Pin, Port};
+use type_gpio::{getGPIORegister, GPIO_CNF, GPIO_CNF_INPUT, GPIO_CNF_OUTPUT, GPIO_MODE};
+use type_rcc::{get_rcc_register, HSI_VALUE, RCC_APB2_CLOCK_ENABLE};
+use type_systick::{get_systick_register, SYS_TICK_CTRL};
+use type_usart::{get_usart1_register, USART_Register, USART_CR1, USART_SR};
+
+// the current tick value (unit: ms)
+pub static mut TOTAL_TICKS: u64 = 0;
+
+// System Clock Frequency (Core Clock)
+pub static mut SystemCoreClock: u32 = HSI_VALUE;
 
 // The following variables are used for testing purposes only:
 //
@@ -106,13 +109,6 @@ pub extern "C" fn bare_main() -> ! {
         let r = 0;
     }
 
-    // set clock
-    // init_clock();
-
-    // get the current system clock value
-    let clock = get_system_core_clock();
-    update_system_core_clock(clock);
-
     // for testing purpose only
     spin(1);
 
@@ -138,11 +134,11 @@ pub extern "C" fn bare_main() -> ! {
     gpio_init(
         &button_pin,
         GPIO_MODE::GPIO_MODE_INPUT,
-        GPIO_CNF::Input(types::GPIO_CNF_INPUT::GPIO_CNF_INPUT_FLOATING),
+        GPIO_CNF::Input(GPIO_CNF_INPUT::GPIO_CNF_INPUT_FLOATING),
     );
 
     // tick every 1 ms
-    systick_init(unsafe { SystemCoreClock } / 1000);
+    systick_init(get_system_core_clock() / 1000);
 
     // loop {
     //     gpio_write(&builtin_led_pin, false);
@@ -158,6 +154,9 @@ pub extern "C" fn bare_main() -> ! {
     //     delayMilliseconds(500);
     // }
 
+    // set UART baud rate to 9600.
+    // connect the STM32F103 by a cp2102 USB dongle and run command:
+    // `$ picocom -b 9600 /dev/ttyUSB0`
     let baudrate = 9600;
     init_uart1(baudrate);
 
@@ -186,11 +185,12 @@ pub extern "C" fn bare_main() -> ! {
         let state = gpio_read(&button_pin);
         gpio_write(&external_led_pin, !state);
 
+        // print button status
         if !state {
             uart_write_str(usart1_register, "press\r\n");
         }
 
-        // check user input
+        // check the user input char
         let input_char = {
             if uart_read_ready(usart1_register) {
                 Some(uart_read_byte(usart1_register))
@@ -199,6 +199,7 @@ pub extern "C" fn bare_main() -> ! {
             }
         };
 
+        // print the user input char
         if let Some(b) = input_char {
             uart_write_str(usart1_register, "input is ");
             uart_write_byte(usart1_register, b);
@@ -239,11 +240,11 @@ fn delayMilliseconds(milliseconds: u32) {
     }
 }
 
-fn gpio_init(pin: &Pin, gpio_mode: GPIO_MODE, gpio_cnf: GPIO_CNF) {
-    gpio_set_mode(pin, gpio_mode, gpio_cnf)
+fn gpio_init(pin: &Pin, gpio_mode: GPIO_MODE, gpio_config: GPIO_CNF) {
+    gpio_set_mode(pin, gpio_mode, gpio_config)
 }
 
-fn gpio_set_mode(pin: &Pin, gpio_mode: GPIO_MODE, gpio_cnf: GPIO_CNF) {
+fn gpio_set_mode(pin: &Pin, gpio_mode: GPIO_MODE, gpio_config: GPIO_CNF) {
     // RM0008 8.3.7 APB2 peripheral clock enable register (RCC_APB2ENR)
     let rcc_register = unsafe { &mut *get_rcc_register() };
 
@@ -265,7 +266,7 @@ fn gpio_set_mode(pin: &Pin, gpio_mode: GPIO_MODE, gpio_cnf: GPIO_CNF) {
         false => (0, pin.number),
     };
 
-    let cnf_value = match gpio_cnf {
+    let cnf_value = match gpio_config {
         GPIO_CNF::Input(i) => i as u8,
         GPIO_CNF::Output(o) => o as u8,
     };
@@ -329,9 +330,6 @@ fn systick_init(ticks: u32) {
     // rcc_register.APB2ENR |= PERIPHERAL_BUS_2_CLOCK_ENABLE::TIMER1_ENABLE as u32;
 }
 
-// the current tick value (unit: ms)
-pub static mut TOTAL_TICKS: u64 = 0;
-
 pub fn get_current_time() -> u64 {
     let ticks = unsafe { TOTAL_TICKS };
     ticks
@@ -345,117 +343,8 @@ pub extern "C" fn SysTick() {
     }
 }
 
-// System Clock Frequency (Core Clock)
-pub static mut SystemCoreClock: u32 = HSI_VALUE;
-
-fn update_system_core_clock(clock: u32) {
-    // update variable `SystemCoreClock`
-    unsafe {
-        SystemCoreClock = clock;
-    }
-}
-
 fn get_system_core_clock() -> u32 {
-    let mut clock: u32 = 0;
-
-    // Get SYSCLK source
-    let rcc_register = unsafe { &mut *get_rcc_register() };
-    let sws = rcc_register.CFGR & RCC_CFGR::SWS as u32;
-
-    if sws == RCC_CFGR_SWS::HSI as u32 {
-        // HSI used as system clock
-        clock = HSI_VALUE;
-    } else if sws == RCC_CFGR_SWS::HSE as u32 {
-        // HSE used as system clock
-        clock = HSE_VALUE;
-    } else if sws == RCC_CFGR_SWS::PLL as u32 {
-        // PLL used as system clock
-
-        // Get PLL clock source and multiplication factor
-        let pllmul = get_bit_range_value(rcc_register.CFGR, RCC_CFGR::PLLMUL as u32);
-        let pllsource = get_bit_range_value(rcc_register.CFGR, RCC_CFGR::PLLSRC as u32);
-
-        let pllmul_number = pllmul + 2;
-
-        if pllsource == RCC_CFGR_PLLSRC::HSI as u32 {
-            // HSI oscillator clock divided by 2 selected as PLL clock entry
-            clock = HSI_VALUE / 2 * pllmul_number;
-        } else {
-            // HSE selected as PLL clock entry
-            if (rcc_register.CFGR & RCC_CFGR::PLLXTPRE as u32) != RCC_CFGR_PLLXTPRE::RESET as u32 {
-                // HSE oscillator clock divided by 2
-                clock = HSE_VALUE / 2 * pllmul_number;
-            } else {
-                // HSE oscillator clock NOT divided by 2
-                clock = HSE_VALUE * pllmul_number;
-            }
-        }
-    } else {
-        clock = HSI_VALUE;
-    }
-
-    // Compute HCLK clock frequency
-
-    // Get HCLK prescaler
-    let hpre = get_bit_range_value(rcc_register.CFGR, RCC_CFGR::HPRE as u32);
-    let prescaler = AHBPrescTable[hpre as usize];
-
-    // HCLK clock frequency
-    clock >> prescaler
-}
-
-// set system clock to 72MHz
-fn init_clock() {
-    let flash_register = unsafe { &mut *get_flash_register() };
-
-    // 1. set flash latency to `2 wait states`
-    flash_register.ACR &= !(FLASH_ACR::LATENCY as u32);
-    flash_register.ACR |= FLASH_ACR_LATENCY::Two as u32;
-
-    let rcc_register = unsafe { &mut *get_rcc_register() };
-
-    // 2. set APB low-speed prescaler to `HCLK / 2`
-    rcc_register.CFGR &= !(RCC_CFGR::PPRE1 as u32);
-    rcc_register.CFGR |= RCC_CFGR_PPRE1::DIVIDED_2 as u32;
-
-    // 3. enable HSE clock
-    rcc_register.CR |= RCC_CR_HSEON::ON as u32;
-
-    // 4. wait for the HSE READY flag
-    while (rcc_register.CR & RCC_CR::HSERDY as u32) == 0 {
-        // note:
-        // here need to write some statements, or rustc may ignore the condition and
-        // optimize into an empty loop (infinite loop)
-        spin_one();
-    }
-
-    // 5. set PLL source to HSE
-    rcc_register.CFGR &= !(RCC_CFGR::PLLSRC as u32);
-    rcc_register.CFGR |= RCC_CFGR_PLLSRC::HSE as u32;
-
-    // 6. multiply by 9
-    rcc_register.CFGR &= !(RCC_CFGR::PLLMUL as u32);
-    rcc_register.CFGR |= RCC_CFGR_PLLMUL::MULX9 as u32;
-
-    // 7. enable the PLL
-    rcc_register.CR |= RCC_CR_PLLON::ON as u32;
-
-    // 8. wait for the PLL READY flag
-    while (rcc_register.CR & RCC_CR::PLLRDY as u32) == 0 {
-        spin_one();
-    }
-
-    // 9. set clock source to pll
-    rcc_register.CFGR &= !(RCC_CFGR::SW as u32);
-    rcc_register.CFGR |= RCC_CFGR_SW::PLL as u32;
-
-    // 10. wait for PLL as source
-    while (rcc_register.CFGR & RCC_CFGR_SWS::PLL as u32) == 0 {
-        spin_one();
-    }
-
-    // note:
-    // It is necessary to update the `SystemCoreClock` variable
+    unsafe { SystemCoreClock }
 }
 
 fn init_uart1(baudrate: u32) {
@@ -465,11 +354,13 @@ fn init_uart1(baudrate: u32) {
     // - PA10: USART1_RX
     //
     // note:
-    // The connection wires between the MCU and USB-TTL(CP2102, CH340 etc.) sometimes
+    // The connection wires between the MCU and some USB-TTL dongle (CP2102, CH340 etc.)
     // need to have the TX and RX crossed, e.g.
-    // MCU          CP210x/CH340
-    // TX  <-------> RX
-    // RX  <-------> TX
+    //
+    // MCU          CP210x/CH340 Dongle
+    // ---          -------------------
+    // TX  <-------> RX  (or TX)
+    // RX  <-------> TX  (or RX)
     // GND <-------> GND
     // 3.3 <-------> 3.3V
 
@@ -491,7 +382,7 @@ fn init_uart1(baudrate: u32) {
     gpio_set_mode(
         &rx_pin,
         GPIO_MODE::GPIO_MODE_INPUT,
-        GPIO_CNF::Input(types::GPIO_CNF_INPUT::GPIO_CNF_INPUT_FLOATING),
+        GPIO_CNF::Input(GPIO_CNF_INPUT::GPIO_CNF_INPUT_FLOATING),
     );
 
     // enable USART1 clock
@@ -503,7 +394,6 @@ fn init_uart1(baudrate: u32) {
     let baud = clock / baudrate;
     let usart1_register = unsafe { &mut *get_usart1_register() };
 
-    // usart1_register.CR1 = 0;
     usart1_register.BRR = baud;
     usart1_register.CR1 = USART_CR1::TE as u32 | USART_CR1::RE as u32 | USART_CR1::UE as u32;
 }
