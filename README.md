@@ -12,6 +12,10 @@ A bare metal (register level) STM32F103C8T6 MCU program in Rust without any SDK,
 
 [Demo](https://user-images.githubusercontent.com/394223/201260032-29f48a6d-eabd-4531-9e00-344b9ef80781.mp4)
 
+<video width="480" height="270" controls>
+  <source src="images/stm32f103.mp4" type="video/mp4">
+</video>
+
 ## Source Code Structure
 
 - `src/type_*.rs` Definition of register structures and values
