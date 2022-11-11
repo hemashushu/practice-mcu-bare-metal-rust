@@ -1,4 +1,6 @@
-# 练习 - 使用 Rust 编写微处理单元 (MCU STM32F103C8T6) 的 "裸机" 程序
+# 使用 Rust 编写微处理单元 (MCU STM32F103C8T6) 的 "裸机" 程序
+
+[EN](README.md) | [中文](README.zh-Hans.md)
 
 一个用 Rust 编写的微处理单元（MCU STM32F103C8T6）的 "裸机" 程序，不依赖 SDK、IDE 或者任何库，唯一需要的是 Rust 编译器。通过直接读写硬件的寄存器实现信号的输入和输出、定时器、串口通信等。
 
@@ -39,9 +41,11 @@
   STM32F107xx advanced Arm®-based 32-bit MCUs
   https://www.st.com/resource/en/reference_manual/cd00171190-stm32f101xx-stm32f102xx-stm32f103xx-stm32f105xx-and-stm32f107xx-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
 
+对于想了解工作原理，以及想进一步实现更多功能的：
+
 - Bare metal programming guide (C lang on STM32F429)
   https://github.com/cpq/bare-metal-programming-guide
 
-- 对于想进一步实现更多功能的人来说，可以参考项目 libopencm3
+- 项目 libopencm3
   https://github.com/libopencm3/libopencm3
 

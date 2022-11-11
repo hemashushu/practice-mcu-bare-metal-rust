@@ -1,4 +1,6 @@
-# Practice - MCU (STM32F103C8T6) Bare-metal in Rust
+# MCU (STM32F103C8T6) Bare-metal in Rust
+
+[EN](README.md) | [中文](README.zh-Hans.md)
 
 A bare metal (register level) STM32F103C8T6 MCU program in Rust without any SDK, IDE, libraries, the only necessary is the Rust compiler.
 
@@ -38,8 +40,10 @@ Hardware description and register structure and value description documentations
 - RM0008 Reference manual
   https://www.st.com/resource/en/reference_manual/cd00171190-stm32f101xx-stm32f102xx-stm32f103xx-stm32f105xx-and-stm32f107xx-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
 
+For those who want to know how it works and who want to go further and implement more features:
+
 - Bare metal programming guide (C lang on STM32F429)
   https://github.com/cpq/bare-metal-programming-guide
 
-- For those who want to go further and implement more features, you can check out this project
+- libopencm3 project
   https://github.com/libopencm3/libopencm3
