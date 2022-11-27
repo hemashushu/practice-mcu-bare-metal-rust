@@ -15,14 +15,14 @@
 
             // --- server type openocd manually ---\\
             // "servertype": "external",
+            // "gdbPath": "/usr/bin/arm-none-eabi-gdb",
+            // "gdbTarget": "localhost:3333",
             // ------------------------------------//
 
 
             // ------- server type openocd --------\\
             "servertype": "openocd",
             "device": "STM32F103C8T6",
-            // allows the display of the peripheral registers in VS Code
-            "svdFile": "svd/STM32F103xx.svd",
             "configFiles": [
                 "interface/cmsis-dap.cfg",
                 "target/stm32f1x.cfg"
@@ -40,10 +40,11 @@
             // ------------------------------------//
 
 
+            // allows the display of the peripheral registers in VS Code
+            "svdFile": "svd/STM32F103xx.svd",
+
             // GDB client settings
             //
-            // "gdbPath": "arm-none-eabi-gdb",
-            // "gdbTarget": "localhost:3333",
             // "runToEntryPoint": "main",
             // "preLaunchCommands": [
             //     "monitor init",

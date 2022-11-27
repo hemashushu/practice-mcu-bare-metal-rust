@@ -112,8 +112,8 @@ pub extern "C" fn bare_main() -> ! {
     // for testing purpose only
     spin(1);
 
-    let builtin_led_pin: Pin = Pin::new(Port::B, 12);
-    let external_led_pin: Pin = Pin::new(Port::C, 13);
+    let builtin_led_pin: Pin = Pin::new(Port::B, 2);
+    let external_led_pin: Pin = Pin::new(Port::B, 13);
     let button_pin: Pin = Pin::new(Port::B, 9);
 
     // set builtin LED to output mode
@@ -354,10 +354,10 @@ fn init_uart1(baudrate: u32) {
     // - PA10: USART1_RX
     //
     // note:
-    // The connection wires between the MCU and some USB-TTL dongle (CP2102, CH340 etc.)
+    // The connection wires between the MCU and some USB-TTL dongle (CP2102, FT232, CH340 etc.)
     // need to have the TX and RX crossed, e.g.
     //
-    // MCU          CP210x/CH340 Dongle
+    // MCU          CP210x/FT232/CH340 Dongle
     // ---          -------------------
     // TX  <-------> RX  (or TX)
     // RX  <-------> TX  (or RX)
@@ -427,4 +427,123 @@ fn uart_read_ready(usart_register: &USART_Register) -> bool {
 
 fn uart_read_byte(usart_register: &USART_Register) -> u8 {
     (usart_register.DR & 255) as u8
+}
+
+fn init_clock() {
+    todo!()
+
+    // F103 clock tree
+    //
+    //                                  Mux
+    // 1. HSI (8MHz) ------------------->T--> SYSCLK --> AHB prescaler (/1, /2, /4, /8 or /16)
+    //                                   |                 |--> HCLK, max: 72MHz
+    // 2. HSE (8MHz) ------------------->|                        |--> AHB bus, core, memory, DMA
+    //                                   |                        |--> (/1 /8) sys timer (systick)
+    //              /------------------->/                        |--> FCLK (free-running clock)
+    //              |                                             |--> APB1 prescaler (/1, /2, /4, /8 or /16), max: 36HMz
+    // 3. PLL --> PLL Mul (x1 .. x16)                             |      |--> PCLK1 --> APB1 peripheral clock
+    //              |                                             |      |--> <x2>  --> APB1 timer clock
+    //              \--> USB prescaler </1> --> USB               |
+    //                                                            |--> APB2 prescaler (/1, /2, /4, /8 or /16), max: 72HMz
+    //                                                                   |--> PCLK2 --> APB2 peripheral clock
+    // note:                                                             |--> <x1>  --> APB2 timer clock
+    // - PLL source: HSI </2> or HSE (/1 or /2)                            |--> ADC prescaler </2> --> ADC 1,2
+    //
+    //
+    // Config example
+    //
+    // Initializes the RCC Oscillators
+    // RCC_OscInitStruct
+    // - OscillatorType = RCC_OSCILLATORTYPE_HSE;
+    // - HSEState = RCC_HSE_ON;
+    // - HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+    // - HSIState = RCC_HSI_ON;
+    // - PLL.PLLState = RCC_PLL_ON;
+    // - PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    // - PLL.PLLMUL = RCC_PLL_MUL9;
+    //
+    // Initializes the CPU, AHB and APB buses clocks
+    // RCC_ClkInitStruct
+    // - ClockType = RCC_CLOCKTYPE_HCLK
+    //              |RCC_CLOCKTYPE_SYSCLK
+    //              |RCC_CLOCKTYPE_PCLK1
+    //              |RCC_CLOCKTYPE_PCLK2;
+    // - SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+    // - AHBCLKDivider = RCC_SYSCLK_DIV1;
+    // - APB1CLKDivider = RCC_HCLK_DIV2;
+    // - APB2CLKDivider = RCC_HCLK_DIV1;
+    // - FLASH_LATENCY_2
+
+
+    // RCC Set System Clock PLL at 72MHz from HSE at 8MHz
+    //
+    // source from:
+    // libopencm3/lib/stm32/f1/rcc.c
+    // function:
+    // rcc_clock_setup_in_hse_8mhz_out_72mhz
+
+
+// TODO:: convert C code to Rust code
+
+    //     /* Enable internal high-speed oscillator. */
+    // 	rcc_osc_on(RCC_HSI);
+    // 	rcc_wait_for_osc_ready(RCC_HSI);
+    //
+    // 	/* Select HSI as SYSCLK source. */
+    // 	rcc_set_sysclk_source(RCC_CFGR_SW_SYSCLKSEL_HSICLK);
+    //
+    // 	/* Enable external high-speed oscillator 8MHz. */
+    // 	rcc_osc_on(RCC_HSE);
+    // 	rcc_wait_for_osc_ready(RCC_HSE);
+    // 	rcc_set_sysclk_source(RCC_CFGR_SW_SYSCLKSEL_HSECLK);
+    //
+    // 	/*
+    // 	 * Set prescalers for AHB, ADC, ABP1, ABP2.
+    // 	 * Do this before touching the PLL (TODO: why?).
+    // 	 */
+    // 	rcc_set_hpre(RCC_CFGR_HPRE_SYSCLK_NODIV);    /* Set. 72MHz Max. 72MHz */
+    // 	rcc_set_ppre1(RCC_CFGR_PPRE1_HCLK_DIV2);     /* Set. 36MHz Max. 36MHz */
+    // 	rcc_set_ppre2(RCC_CFGR_PPRE2_HCLK_NODIV);    /* Set. 72MHz Max. 72MHz */
+    // 	rcc_set_adcpre(RCC_CFGR_ADCPRE_PCLK2_DIV8);  /* Set.  9MHz Max. 14MHz */
+    //
+    // 	/*
+    // 	 * Sysclk runs with 72MHz -> 2 waitstates.
+    // 	 * 0WS from 0-24MHz
+    // 	 * 1WS from 24-48MHz
+    // 	 * 2WS from 48-72MHz
+    // 	 */
+    // 	flash_set_ws(FLASH_ACR_LATENCY_2WS);
+    //
+    // 	/*
+    // 	 * Set the PLL multiplication factor to 9.
+    // 	 * 8MHz (external) * 9 (multiplier) = 72MHz
+    // 	 */
+    // 	rcc_set_pll_multiplication_factor(RCC_CFGR_PLLMUL_PLL_CLK_MUL9);
+    //
+    // 	/* Select HSE as PLL source. */
+    // 	rcc_set_pll_source(RCC_CFGR_PLLSRC_HSE_CLK);
+    //
+    // 	/*
+    // 	 * External frequency undivided before entering PLL
+    // 	 * (only valid/needed for HSE).
+    // 	 */
+    // 	rcc_set_pllxtpre(RCC_CFGR_PLLXTPRE_HSE_CLK);
+    //
+    // 	/* Enable PLL oscillator and wait for it to stabilize. */
+    // 	rcc_osc_on(RCC_PLL);
+    // 	rcc_wait_for_osc_ready(RCC_PLL);
+    //
+    // 	/* Select PLL as SYSCLK source. */
+    // 	rcc_set_sysclk_source(RCC_CFGR_SW_SYSCLKSEL_PLLCLK);
+    //
+    // 	/* Set the peripheral clock frequencies used */
+    // 	rcc_ahb_frequency = 72000000;
+    // 	rcc_apb1_frequency = 36000000;
+    // 	rcc_apb2_frequency = 72000000;
+    //
+    //     // note:
+    //     // There is a full-speed USB module in the STM32, and its serial interface engine requires a
+    //     // clock source with a frequency of 48MHz. The clock source can only be obtained from the PLL output.
+    //     // when a USB module is required, the PLL must be enabled, and the clock frequency
+    //     // is configured to 48MHz or 72MHz.
 }

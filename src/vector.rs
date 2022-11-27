@@ -19,8 +19,9 @@ extern "C" {
 //
 // Note:
 // the second entry `41040008` (i.e. `0x0800_0441`) in the `.vector_table`
-// is the address of the function `ResetHandler`. note the function address is
-// 1 byte behind of `0x0800_0440` because of the executed in thumb mode.
+// is the address of the function `ResetHandler`. note this address is
+// 1 byte behind of actual function address `0x0800_0440` because of the
+// executed in thumb mode.
 //
 // running check
 //
