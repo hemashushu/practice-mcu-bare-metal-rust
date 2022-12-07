@@ -9,8 +9,10 @@ You can easily view the values of the peripheral registers in GDB using PyCortex
 1. install PyCortexMDebug
    download source from [https://github.com/bnahill/PyCortexMDebug], and change into the source directory and run `$ python setup.py install --user`.
 
-2. get the SVD file for your MCU
-   download from [https://github.com/posborne/cmsis-svd].
+2. copy `PyCortexMDebug/scripts/gdb.py` to your project folder.
+   
+3. get the SVD file for your MCU
+   download from [https://github.com/posborne/cmsis-svd] or st.com product document page [section System View Description](https://www.st.com/en/microcontrollers-microprocessors/stm32f103c8.html#documentation).
 
 ## Load
 

@@ -2,5 +2,6 @@
     // 用于避免因 `#![no_std]` 引起 rust-analyzer 的错误提示 "can't find crate for `test`"
     "rust-analyzer.checkOnSave.allTargets": false,
     "rust-analyzer.cargo.target": "thumbv7m-none-eabi",
-    "cortex-debug.openocdPath": "/usr/bin/openocd"
+    "cortex-debug.openocdPath": "/usr/bin/openocd",
+    "cortex-debug.variableUseNaturalFormat": false
 }

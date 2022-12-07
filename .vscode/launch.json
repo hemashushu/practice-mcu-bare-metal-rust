@@ -41,7 +41,7 @@
 
 
             // allows the display of the peripheral registers in VS Code
-            "svdFile": "svd/STM32F103xx.svd",
+            "svdFile": "svd/STM32F103.svd",
 
             // GDB client settings
             //

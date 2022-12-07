@@ -31,29 +31,23 @@ pub struct Flash_Register {
 
 // PM0075 3.1 Flash access control register (FLASH_ACR)
 // 3.1 Flash access control register (FLASH_ACR)
-#[repr(u32)]
-pub enum FLASH_ACR {
-    // Bits 2:0 LATENCY: Latency
-    // These bits represent the ratio of the SYSCLK (system clock) period to the Flash access
-    // time.
-    LATENCY = bit_range_to_u32!(0, 3),
-
-    // Bit 3 HLFCYA: Flash half cycle access enable
-    // 0: Half cycle is disabled
-    // 1: Half cycle is enabled
-    HLFCYA = bit_to_u32!(3),
-
-    // Bit 4 PRFTBE: Prefetch buffer enable
-    // 0: Prefetch is disabled
-    // 1: Prefetch is enabled
-    PRFTBE = bit_to_u32!(4),
-
-    // Bit 5 PRFTBS: Prefetch buffer status
-    // This bit provides the status of the prefetch buffer.
-    // 0: Prefetch buffer is disabled
-    // 1: Prefetch buffer is enabled
-    PRFTBS = bit_to_u32!(5),
-}
+//
+// Bits 2:0 LATENCY: Latency
+// These bits represent the ratio of the SYSCLK (system clock) period to the Flash access
+// time.
+//
+// Bit 3 HLFCYA: Flash half cycle access enable
+// 0: Half cycle is disabled
+// 1: Half cycle is enabled
+//
+// Bit 4 PRFTBE: Prefetch buffer enable
+// 0: Prefetch is disabled
+// 1: Prefetch is enabled
+//
+// Bit 5 PRFTBS: Prefetch buffer status
+// This bit provides the status of the prefetch buffer.
+// 0: Prefetch buffer is disabled
+// 1: Prefetch buffer is enabled
 
 #[repr(u32)]
 pub enum FLASH_ACR_LATENCY {
@@ -63,14 +57,17 @@ pub enum FLASH_ACR_LATENCY {
     // 010 Two wait states, if 48 MHz < SYSCLK ≤ 72 MHz
     //
     // note:
-    // in project CMSIS/Device/STM32F1xx/include/stm32f103xb.h, these value is define as another values:
+    // in file `STM32Cube/Repository/STM32Cube_FW_F1_V1.8.4/Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f103xb.h`,
+    // the value of FLASH_ACR_LATENCY_2 is define as 0b100:
     // #define FLASH_ACR_LATENCY_0                 (0x1U << FLASH_ACR_LATENCY_Pos)    /*!< 0x00000001 */
     // #define FLASH_ACR_LATENCY_1                 (0x2U << FLASH_ACR_LATENCY_Pos)    /*!< 0x00000002 */
     // #define FLASH_ACR_LATENCY_2                 (0x4U << FLASH_ACR_LATENCY_Pos)    /*!< 0x00000004 */
     Zero = 0b000,
     One = 0b001,
-    Two = 0b010,
+    Two = 0b100, // the value defined by `stm32f103xb.h` is adopted here instead of the documented value.
 }
+
+pub const FLASH_ACR_LATENCY_MASK:u32 = ones_to_u32!(0, 3);
 
 pub fn get_flash_register() -> *mut Flash_Register {
     let addr: u32 = 0x4002_2000;

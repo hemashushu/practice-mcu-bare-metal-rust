@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use crate::type_common::Port;
+use crate::common::Port;
 
 // RM0008 9.5 GPIO and AFIO register maps
 #[repr(C)]
@@ -45,7 +45,7 @@ pub enum GPIO_CNF {
 pub enum GPIO_CNF_INPUT {
     GPIO_CNF_INPUT_ANALOG,
     GPIO_CNF_INPUT_FLOATING,
-    GPIO_CNF_INPUT_PULL_UP_AND_PULL_DOWN,
+    GPIO_CNF_INPUT_PULL_UP_AND_PULL_DOWN, // combine with the (RM0008 Table 20. Port bit configuration table) GPIOx_ODR
 }
 
 #[repr(u8)]
@@ -66,7 +66,7 @@ pub enum GPIO_CNF_OUTPUT {
 // 0x4001 1000 - 0x4001 13FF  GPIO Port C
 // 0x4001 0C00 - 0x4001 0FFF  GPIO Port B
 // 0x4001 0800 - 0x4001 0BFF  GPIO Port A
-pub fn getGPIORegister(port: Port) -> *mut GPIO_Register {
+pub fn get_GPIO_register(port: Port) -> *mut GPIO_Register {
     let addr: u32 = 0x4001_0800 + 0x400 * port as u32;
     addr as *mut GPIO_Register
 }

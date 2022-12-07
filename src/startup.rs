@@ -6,6 +6,54 @@
 
 use core::ptr;
 
+// PM0214 2.3.2 Exception types
+// Table 17. Properties of the different exception types
+extern "C" {
+    /**
+     * A NonMaskable Interrupt (NMI) can be signalled by a peripheral or
+     * triggered by software. This is the highest priority exception other than
+     * reset. It is permanently enabled and has a fixed priority of -2. NMIs
+     * cannot be:
+     *
+     * - Masked or prevented from activation by any other exception
+     * - Preempted by any exception other than Reset.
+     */
+    fn NMI_Handler();
+
+    /**
+     * A hard fault is an exception that occurs because of an error during
+     * exception processing, or because an exception cannot be managed by
+     * any other exception mechanism. Hard faults have a fixed priority of -1,
+     * meaning they have higher priority than any exception with configurable
+     * priority.
+     */
+    fn HardFault_Handler();
+    fn MemManage_Handler();
+    fn BusFault_Handler();
+    fn UsageFault_Handler();
+
+    /**
+     * A supervisor call (SVC) is an exception that is triggered by the SVC
+     * instruction. In an OS environment, applications can use SVC
+     * instructions to access OS kernel functions and device drivers.
+     */
+    fn SVC_Handler();
+
+    /**
+     * PendSV is an interrupt-driven request for system-level service. In an
+     * OS environment, use PendSV for context switching when no other
+     * exception is active.
+     */
+    fn PendSV_Handler();
+
+    /**
+     * A SysTick exception is an exception the system timer generates when
+     * it reaches zero. Software can also generate a SysTick exception. In an
+     * OS environment, the processor can use this exception as system tick.
+     */
+    fn SysTick_Handler();
+}
+
 extern "C" {
     fn main() -> !;
 }
@@ -19,7 +67,7 @@ extern "C" {
 //
 // Note:
 // the second entry `41040008` (i.e. `0x0800_0441`) in the `.vector_table`
-// is the address of the function `ResetHandler`. note this address is
+// is the address of the function `Reset_Handler`. note this address is
 // 1 byte behind of actual function address `0x0800_0440` because of the
 // executed in thumb mode.
 //
@@ -29,21 +77,21 @@ extern "C" {
 // 0x8000000:      0x20005000      0x08000441
 //
 #[no_mangle]
-pub extern "C" fn ResetHandler() -> ! {
+pub extern "C" fn Reset_Handler() -> ! {
     // $ arm-none-eabi-nm target/thumbv7m-none-eabi/debug/bare-metal-blinky
     //
     // ```
-    // 20000038 B __ebss
-    // 2000000c D __edata
-    // 20000038 B __heap_start
+    // 20000038 B _ebss
+    // 2000000c D _edata
+    // 20000038 B _heap_start
     // 080004d8 T main
-    // 08000440 T ResetHandler
-    // 20000010 B __sbss
-    // 20000000 D __sdata
+    // 08000440 T Reset_Handler
+    // 20000010 B _sbss
+    // 20000000 D _sdata
     // 20000010 B SHOULD_LOCATED_BSS_SECTION
     // 20000000 D SHOULD_LOCATED_IN_DATA_SECTION
-    // 080017b0 A __sidata
-    // 20005000 A __stack_start
+    // 080017b0 A _sidata
+    // 20005000 A _estack
     // ```
     //
     // running check
@@ -53,39 +101,28 @@ pub extern "C" fn ResetHandler() -> ! {
     // ```
     // Non-debugging symbols:
     // 0x20000000  SHOULD_LOCATED_IN_DATA_SECTION
-    // 0x20000000  __sdata
-    // 0x2000000c  __edata
+    // 0x20000000  _sdata
+    // 0x2000000c  _edata
     // 0x20000010  SHOULD_LOCATED_BSS_SECTION
-    // 0x20000010  __sbss
-    // 0x20000038  __ebss
-    // 0x20000038  __heap_start
+    // 0x20000010  _sbss
+    // 0x20000038  _ebss
+    // 0x20000038  _heap_start
     // ```
     //
     // These symbols come from `linker.ld`
     //
-    // extern "C" {
-    //     fn __sbss(); // Start of .bss section
-    //     fn __ebss(); // End of .bss section
-    //     fn __sdata(); // Start of .data section
-    //     fn __edata(); // End of .data section
-    //     fn __sidata(); // Start of .rodata section
-    //     fn __stack_start(); // Stack bottom
-    //     fn __heap_start(); // Heap start
-    // }
-    //
     // note:
-    // the name (e.g. `__sbss`) following the `function` is the variable address of the symbol.
-    // the name (e.g. `__sbss`) following the `static` is the variable value of the address.
-    // e.g. the `fn __sbss` value is u32 `0x2000_0100`, the `static __sbss` value is
-    // the memory content from address `0x2000_0100`.
+    // the variable (e.g. `_sbss`) following the `extern "C" { static ...` is the
+    // value of the address, but what we need is the address itself.
+    // e.g. the `_sbss` value is the memory content from address `0x2000_0100`.
     extern "C" {
-        static mut __sbss: u8; // Start of .bss section
-        static __ebss: u8; // End of .bss section
-        static mut __sdata: u8; // Start of .data section
-        static __edata: u8; // End of .data section
-        static __sidata: u8; // Start of .rodata section
-        static __stack_start: u8; // Stack bottom
-        static __heap_start: u8; // Heap start
+        static mut _sbss: u8; // Start of .bss section
+        static _ebss: u8; // End of .bss section
+        static mut _sdata: u8; // Start of .data section
+        static _edata: u8; // End of .data section
+        static _sidata: u8; // Start of .rodata section
+        static _estack: u8; // Stack bottom
+        static _heap_start: u8; // Heap start
     }
 
     // set initial stack pointer
@@ -95,7 +132,7 @@ pub extern "C" fn ResetHandler() -> ! {
     // this statement is not necessary.
     //
     // unsafe {
-    //     asm!("ldr sp, = __stack_start",);
+    //     asm!("ldr sp, = _estack",);
     // }
 
     // running check
@@ -112,14 +149,6 @@ pub extern "C" fn ResetHandler() -> ! {
         //
         // (gdb) set output-radix 16
         // Output radix now set to decimal 16, hex 10, octal 20.
-        // (gdb) i locals
-        // o = 0x20000038
-        // n = 0x80017b0
-        // m = 0x20005000
-        // l = 0x2000000c
-        // k = 0x20000000
-        // j = 0x20000038
-        // i = 0x20000010
         //
         // (gdb) i locals
         // o = 0x20000038
@@ -129,13 +158,13 @@ pub extern "C" fn ResetHandler() -> ! {
         // k = 0x20000000 <SHOULD_LOCATED_IN_DATA_SECTION>
         // j = 0x20000038
         // i = 0x20000010 <SHOULD_LOCATED_BSS_SECTION>
-        let i = &__sbss;
-        let j = &__ebss;
-        let k = &__sdata;
-        let l = &__edata;
-        let m = &__stack_start;
-        let n = &__sidata;
-        let o = &__heap_start;
+        let i = &_sbss;
+        let j = &_ebss;
+        let k = &_sdata;
+        let l = &_edata;
+        let m = &_estack;
+        let n = &_sidata;
+        let o = &_heap_start;
         let r = 0;
     }
 
@@ -157,21 +186,21 @@ pub extern "C" fn ResetHandler() -> ! {
     // `write_volatile` means volatile write of a memory
     //
     // unsafe {
-    //     (&__sbss as *const u8 as u32..&__ebss as *const u8 as u32)
+    //     (&_sbss as *const u8 as u32..&_ebss as *const u8 as u32)
     //         .for_each(|dest_addr| (dest_addr as *mut u8).write_volatile(0))
     // }
     //
     unsafe {
-        let count = &__ebss as *const u8 as usize - &__sbss as *const u8 as usize;
-        ptr::write_bytes(&mut __sbss as *mut u8, 0, count);
+        let count = &_ebss as *const u8 as usize - &_sbss as *const u8 as usize;
+        ptr::write_bytes(&mut _sbss as *mut u8, 0, count);
     }
 
     // initialize `Data`
     // copy the content of `.data` from `flash` to `RAM`
     //
     // unsafe {
-    //     let data_source_addr = &__sidata as *const u8 as u32;
-    //     (&__sdata as *const u8 as u32..&__edata as *const u8 as u32)
+    //     let data_source_addr = &_sidata as *const u8 as u32;
+    //     (&_sdata as *const u8 as u32..&_edata as *const u8 as u32)
     //         .enumerate()
     //         .for_each(|(index, dest_addr)| {
     //             (dest_addr as *mut u8)
@@ -180,8 +209,8 @@ pub extern "C" fn ResetHandler() -> ! {
     // }
 
     unsafe {
-        let count = &__edata as *const u8 as usize - &__sdata as *const u8 as usize;
-        ptr::copy_nonoverlapping(&__sidata as *const u8, &mut __sdata as *mut u8, count);
+        let count = &_edata as *const u8 as usize - &_sdata as *const u8 as usize;
+        ptr::copy_nonoverlapping(&_sidata as *const u8, &mut _sdata as *mut u8, count);
     }
 
     // running check
@@ -209,77 +238,29 @@ pub union Vector {
     handler: unsafe extern "C" fn(),
 }
 
-// PM0214 2.3.2 Exception types
-// Table 17. Properties of the different exception types
-extern "C" {
-    /**
-     * A NonMaskable Interrupt (NMI) can be signalled by a peripheral or
-     * triggered by software. This is the highest priority exception other than
-     * reset. It is permanently enabled and has a fixed priority of -2. NMIs
-     * cannot be:
-     *
-     * - Masked or prevented from activation by any other exception
-     * - Preempted by any exception other than Reset.
-     */
-    fn NMI();
-
-    /**
-     * A hard fault is an exception that occurs because of an error during
-     * exception processing, or because an exception cannot be managed by
-     * any other exception mechanism. Hard faults have a fixed priority of -1,
-     * meaning they have higher priority than any exception with configurable
-     * priority.
-     */
-    fn HardFault();
-    fn MemManage();
-    fn BusFault();
-    fn UsageFault();
-
-    /**
-     * A supervisor call (SVC) is an exception that is triggered by the SVC
-     * instruction. In an OS environment, applications can use SVC
-     * instructions to access OS kernel functions and device drivers.
-     */
-    fn SVCall();
-
-    /**
-     * PendSV is an interrupt-driven request for system-level service. In an
-     * OS environment, use PendSV for context switching when no other
-     * exception is active.
-     */
-    fn PendSV();
-
-    /**
-     * A SysTick exception is an exception the system timer generates when
-     * it reaches zero. Software can also generate a SysTick exception. In an
-     * OS environment, the processor can use this exception as system tick.
-     */
-    fn SysTick();
-}
-
 #[link_section = ".vector_table.reset_vector"]
 #[no_mangle]
-pub static RESET_VECTOR: extern "C" fn() -> ! = ResetHandler;
+pub static Reset_Vector: extern "C" fn() -> ! = Reset_Handler;
 
 #[link_section = ".vector_table.exceptions"]
 #[no_mangle]
-pub static EXCEPTIONS: [Vector; 14] = [
-    Vector { handler: NMI },
-    Vector { handler: HardFault },
-    Vector { handler: MemManage },
-    Vector { handler: BusFault },
+pub static Exceptions: [Vector; 14] = [
+    Vector { handler: NMI_Handler },
+    Vector { handler: HardFault_Handler },
+    Vector { handler: MemManage_Handler },
+    Vector { handler: BusFault_Handler },
     Vector {
-        handler: UsageFault,
+        handler: UsageFault_Handler,
     },
     Vector { reserved: 0 },
     Vector { reserved: 0 },
     Vector { reserved: 0 },
     Vector { reserved: 0 },
-    Vector { handler: SVCall },
+    Vector { handler: SVC_Handler },
     Vector { reserved: 0 },
     Vector { reserved: 0 },
-    Vector { handler: PendSV },
-    Vector { handler: SysTick },
+    Vector { handler: PendSV_Handler },
+    Vector { handler: SysTick_Handler },
 
     // IRQ starts here
 
@@ -290,6 +271,6 @@ pub static EXCEPTIONS: [Vector; 14] = [
 ];
 
 #[no_mangle]
-pub extern "C" fn DefaultExceptionHandler() -> ! {
+pub extern "C" fn Default_Handler() -> ! {
     loop {}
 }
