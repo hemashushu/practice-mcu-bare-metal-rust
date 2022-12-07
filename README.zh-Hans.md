@@ -13,9 +13,7 @@
 - SysTick 和中断
 - UART 读和写
 
-<!--
-[Demo](https://user-images.githubusercontent.com/394223/201260032-29f48a6d-eabd-4531-9e00-344b9ef80781.mp4)
--->
+[演示视频](https://user-images.githubusercontent.com/394223/206145763-c068ce9e-dcf1-4c87-a6ef-062fdc21162d.mp4)
 
 [演示视频](images/stm32f103-v2.mp4)
 
