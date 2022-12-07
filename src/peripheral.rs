@@ -19,7 +19,7 @@ use crate::{
     register_usart::{get_usart1_register, USART_CR1, USART_Register, USART_SR}, utils::spin,
 };
 
-pub fn gpio_clock_on(port: Port) {
+fn turn_on_gpio_clock(port: Port) {
     // RM0008 8.3.7 APB2 peripheral clock enable register (RCC_APB2ENR)
     let rcc_register = unsafe { &mut *get_rcc_register() };
 
@@ -43,6 +43,9 @@ pub fn gpio_init(
     gpio_config: GPIO_CNF,
     option_input_pull_up_down: Option<bool>,
 ) {
+    // turn on GPIO clock
+    turn_on_gpio_clock(pin.port);
+
     let cr_idx = pin.number / 8;
     let relative_pin_number = pin.number % 8;
 
@@ -287,9 +290,6 @@ pub fn uart1_init(baudrate: u32) {
 
     let tx_pin: Pin = Pin::new(Port::A, 9);
     let rx_pin: Pin = Pin::new(Port::A, 10);
-
-    // turn on GPIO clock
-    gpio_clock_on(tx_pin.port);
 
     // TX (PA9) pin is configured as 50MHz output, push-pull and alternate function.
     gpio_init(

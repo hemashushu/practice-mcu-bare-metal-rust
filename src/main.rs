@@ -22,7 +22,7 @@ mod startup;
 
 use core::panic::PanicInfo;
 use peripheral::{
-    clock_init, gpio_clock_on, gpio_init, gpio_read, gpio_write, systick_init_with_millisecond,
+    clock_init, gpio_init, gpio_read, gpio_write, systick_init_with_millisecond,
     tick_delay, uart1_init, uart_write_str,
 };
 use register_gpio::{GPIO_CNF, GPIO_CNF_INPUT, GPIO_CNF_OUTPUT, GPIO_MODE};
@@ -96,10 +96,10 @@ pub extern "C" fn bare_main() -> ! {
     }
 
     test_set_clock();
-    test_blink(); // Test A
+    // test_blink(); // Test A
     // test_button(); // Test B
     // test_systick(); // Test C
-    // test_uart(); // Test D
+    test_uart(); // Test D
 
     // ! Only one of the test A,B,C,D can be selected at a time. ! //
     // ! `test_set_clock` can be combined with test A,B,C,D      ! //
@@ -110,9 +110,6 @@ pub extern "C" fn bare_main() -> ! {
 }
 
 fn test_blink() {
-    // turn on GPIO clock
-    gpio_clock_on(pin::BUILTIN_LED_PIN.port);
-
     // set builtin LED to output mode
     gpio_init(
         &pin::BUILTIN_LED_PIN,
@@ -134,10 +131,6 @@ fn test_set_clock() {
 }
 
 fn test_button() {
-    // turn on GPIO clock
-    gpio_clock_on(pin::EXTERNAL_LED_PIN.port);
-    gpio_clock_on(pin::BUTTON_1_PIN.port);
-
     // set external LED pin to output mode
     gpio_init(
         &pin::EXTERNAL_LED_PIN,
@@ -173,9 +166,6 @@ fn test_systick() {
     // set tick every 1 ms
     systick_init_with_millisecond();
 
-    // turn on GPIO clock
-    gpio_clock_on(pin::BUILTIN_LED_PIN.port);
-
     // set builtin LED to output mode
     gpio_init(
         &pin::BUILTIN_LED_PIN,
@@ -192,14 +182,13 @@ fn test_systick() {
     }
 }
 
-// connect the STM32F103 by a cp2102/ft232/ch340 USB dongle and run command:
-// `$ picocom -b 115200 /dev/ttyUSB0`
+/**
+ * connect the STM32F103 by a cp2102/ft232/ch340 USB dongle and run command:
+ * `$ picocom -b 115200 /dev/ttyUSB0`
+ */
 fn test_uart() {
     // set tick every 1 ms
     systick_init_with_millisecond();
-
-    // turn on GPIO clock
-    gpio_clock_on(pin::EXTERNAL_LED_PIN.port);
 
     // set external LED to output mode
     gpio_init(
