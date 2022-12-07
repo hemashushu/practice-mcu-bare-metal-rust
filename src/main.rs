@@ -96,10 +96,12 @@ pub extern "C" fn bare_main() -> ! {
     }
 
     test_set_clock();
-    // test_blink();
-    // test_button();
-    // test_systick();
-    test_uart();
+    test_blink(); // Test A
+    test_button(); // Test B
+    test_systick(); // Test C
+    test_uart(); // Test D
+
+    // !Only one of the test A,B,C,D can be selected at a time.
 
     loop {
         spin(1);

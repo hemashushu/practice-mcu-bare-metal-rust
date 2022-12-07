@@ -41,21 +41,6 @@ pub struct RCC_Register {
     pub CFGR2:u32
 }
 
-// RM0008 7.3.1 Clock control register (RCC_CR)
-#[repr(u32)]
-pub enum RCC_CR {
-    HSION = bit_to_u32!(0),
-    HSIRDY = bit_to_u32!(1),
-    HSITRIM = ones_to_u32!(3, 5),
-    HSICAL = ones_to_u32!(8, 8),
-    HSEON = bit_to_u32!(16),
-    HSERDY = bit_to_u32!(17),
-    HSEBYP = bit_to_u32!(18),
-    CSSON = bit_to_u32!(19),
-    PLLON = bit_to_u32!(24),
-    PLLRDY = bit_to_u32!(25),
-}
-
 // HSEON: HSE clock enable
 pub const RCC_CR_HSEON: u32 = bit_to_u32!(16);
 pub const RCC_CR_HSERDY: u32 = bit_to_u32!(17);
@@ -63,22 +48,6 @@ pub const RCC_CR_HSERDY: u32 = bit_to_u32!(17);
 // PLLON: PLL enable
 pub const RCC_CR_PLLON: u32 = bit_to_u32!(24);
 pub const RCC_CR_PLLRDY: u32 = bit_to_u32!(25);
-
-// RM0008 7.3.2 Clock configuration register (RCC_CFGR)
-#[repr(u32)]
-pub enum RCC_CFGR {
-    SW = ones_to_u32!(0, 2),
-    SWS = ones_to_u32!(2, 2),
-    HPRE = ones_to_u32!(4, 4),
-    PPRE1 = ones_to_u32!(8, 3),
-    PPRE2 = ones_to_u32!(11, 3),
-    ADCPRE = ones_to_u32!(14, 2),
-    PLLSRC = bit_to_u32!(16),
-    PLLXTPRE = bit_to_u32!(17),
-    PLLMUL = ones_to_u32!(18, 4),
-    USBPRE = bit_to_u32!(22),
-    MCO = ones_to_u32!(24, 3),
-}
 
 // SW: System clock switch
 #[repr(u32)]
@@ -192,46 +161,11 @@ pub enum RCC_CFGR_PLLMUL {
     MULX7 = bits_to_u32!(0b0101, 18),
     MULX8 = bits_to_u32!(0b0110, 18),
     MULX9 = bits_to_u32!(0b0111, 18),
-
-//     // 0000: PLL input clock x 2
-//     // 0001: PLL input clock x 3
-//     // 0010: PLL input clock x 4
-//     // 0011: PLL input clock x 5
-//     // 0100: PLL input clock x 6
-//     // 0101: PLL input clock x 7
-//     // 0110: PLL input clock x 8
-//     // 0111: PLL input clock x 9
-//     MULX2 = bits_to_u32!(0b0000, 18),
-//     MULX3 = bits_to_u32!(0b0001, 18),
-//     MULX4 = bits_to_u32!(0b0010, 18),
-//     MULX5 = bits_to_u32!(0b0011, 18),
-//     MULX6 = bits_to_u32!(0b0100, 18),
-//     MULX7 = bits_to_u32!(0b0101, 18),
-//     MULX8 = bits_to_u32!(0b0110, 18),
-//     MULX9 = bits_to_u32!(0b0111, 18),
-//
-//     // 1000: PLL input clock x 10
-//     // 1001: PLL input clock x 11
-//     // 1010: PLL input clock x 12
-//     // 1011: PLL input clock x 13
-//     // 1100: PLL input clock x 14
-//     // 1101: PLL input clock x 15
-//     // 1110: PLL input clock x 16
-//     // 1111: PLL input clock x 16
-//     MULX10 = bits_to_u32!(0b1000, 18),
-//     MULX11 = bits_to_u32!(0b1001, 18),
-//     MULX12 = bits_to_u32!(0b1010, 18),
-//     MULX13 = bits_to_u32!(0b1011, 18),
-//     MULX14 = bits_to_u32!(0b1100, 18),
-//     MULX15 = bits_to_u32!(0b1101, 18),
-//     MULX16 = bits_to_u32!(0b1110, 18),
-//     MULX16DUP = bits_to_u32!(0b1111, 18),
 }
 
 pub const RCC_CFGR_PLLMUL_MASK:u32 = ones_to_u32!(18,4);
 
 pub const RCC_CFGR_PLLXTPRE_MASK:u32 = bit_to_u32!(17);
-
 pub const RCC_CFGR2_PREDIV1_MASK:u32 = ones_to_u32!(0,4);
 pub const RCC_CFGR2_PREDIV1SRC_MASK:u32 = bit_to_u32!(16);
 
