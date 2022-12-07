@@ -13,7 +13,7 @@ A bare metal (register level) STM32F103C8T6/STM32F103 MCU program in Rust withou
 - SysTick and interrupt
 - UART read and write
 
-<!-- [Demo](https://user-images.githubusercontent.com/394223/201260032-29f48a6d-eabd-4531-9e00-344b9ef80781.mp4) -->
+[Demo video](https://user-images.githubusercontent.com/394223/206145763-c068ce9e-dcf1-4c87-a6ef-062fdc21162d.mp4)
 
 [Demo video](images/stm32f103-v2.mp4)
 
