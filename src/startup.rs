@@ -81,17 +81,25 @@ pub extern "C" fn Reset_Handler() -> ! {
     // $ arm-none-eabi-nm target/thumbv7m-none-eabi/debug/bare-metal-blinky
     //
     // ```
-    // 20000038 B _ebss
-    // 2000000c D _edata
-    // 20000038 B _heap_start
-    // 080004d8 T main
-    // 08000440 T Reset_Handler
-    // 20000010 B _sbss
+    // 08000004 R Reset_Vector
+    // 08000008 R Exceptions
+    // 080002a6 t rust_begin_unwind
+    // 080002ae T main
+    // 080004ca T Reset_Handler
+    // 080005a2 T HardFault_Handler
+    // 080005a2 T MemManage_Handler
+    // 080005a2 T NMI_Handler
+    // 080005a2 T PendSV_Handler
+    // 08001c98 A _sidata
+    //
     // 20000000 D _sdata
-    // 20000010 B SHOULD_LOCATED_BSS_SECTION
     // 20000000 D SHOULD_LOCATED_IN_DATA_SECTION
-    // 080017b0 A _sidata
+    // 20000020 D _edata
+    // 20000020 B _sbss
+    // 20000020 B SHOULD_LOCATED_BSS_SECTION
+    // 20000048 B _ebss
     // 20005000 A _estack
+    // 20000048 B _heap_start
     // ```
     //
     // running check
@@ -100,13 +108,21 @@ pub extern "C" fn Reset_Handler() -> ! {
     //
     // ```
     // Non-debugging symbols:
-    // 0x20000000  SHOULD_LOCATED_IN_DATA_SECTION
+    // 0x08000004  Reset_Vector
+    // 0x08000008  Exceptions
     // 0x20000000  _sdata
-    // 0x2000000c  _edata
-    // 0x20000010  SHOULD_LOCATED_BSS_SECTION
-    // 0x20000010  _sbss
-    // 0x20000038  _ebss
-    // 0x20000038  _heap_start
+    // 0x20000000  SHOULD_LOCATED_IN_DATA_SECTION
+    // 0x2000000c  bare_metal_blinky::common::SYSCLK
+    // 0x20000010  bare_metal_blinky::common::HCLK
+    // 0x20000014  bare_metal_blinky::common::PCLK1
+    // 0x20000018  bare_metal_blinky::common::PCLK2
+    // 0x2000001c  bare_metal_blinky::common::ADCCLK
+    // 0x20000020  _edata
+    // 0x20000020  _sbss
+    // 0x20000020  SHOULD_LOCATED_BSS_SECTION
+    // 0x20000040  bare_metal_blinky::common::SYSTICKS
+    // 0x20000048  _ebss
+    // 0x20000048  _heap_start
     // ```
     //
     // These symbols come from `linker.ld`
@@ -140,7 +156,7 @@ pub extern "C" fn Reset_Handler() -> ! {
     // (gdb) i r sp
     //
     // ```
-    // sp             0x20004fc0          0x20004fc0
+    // sp             0x20004f30          0x20004f30
     // ```
 
     // for testing purposes only
@@ -151,13 +167,13 @@ pub extern "C" fn Reset_Handler() -> ! {
         // Output radix now set to decimal 16, hex 10, octal 20.
         //
         // (gdb) i locals
-        // o = 0x20000038
-        // n = 0x8001738
+        // o = 0x20000048
+        // n = 0x8001c98
         // m = 0x20005000
-        // l = 0x2000000c
+        // l = 0x20000020 <SHOULD_LOCATED_BSS_SECTION>
         // k = 0x20000000 <SHOULD_LOCATED_IN_DATA_SECTION>
-        // j = 0x20000038
-        // i = 0x20000010 <SHOULD_LOCATED_BSS_SECTION>
+        // j = 0x20000048
+        // i = 0x20000020 <SHOULD_LOCATED_BSS_SECTION>
         let i = &_sbss;
         let j = &_ebss;
         let k = &_sdata;
@@ -171,9 +187,9 @@ pub extern "C" fn Reset_Handler() -> ! {
     // running check
     //
     // (gdb) x/10xw 0x20000000
-    // 0x20000000 <SHOULD_LOCATED_IN_DATA_SECTION>:    0x2e006816      0x6855d018      0xd0f942b5      0x8026882e
-    // 0x20000010 <SHOULD_LOCATED_BSS_SECTION>:        0x34023502      0x270168c6      0xd1fb423e      0x423e2714
-    // 0x20000020 <SHOULD_LOCATED_BSS_SECTION+16>:     0x429dd108      0x4615d301
+    // 0x20000000 :    0x2e006816      0x6855d018      0xd0f942b5      0x8026882e
+    // 0x20000010 :    0x34023502      0x270168c6      0xd1fb423e      0x423e2714
+    // 0x20000020 :    0x429dd108      0x4615d301
     //
     // note:
     // these are the random numbers in memory that
@@ -216,18 +232,23 @@ pub extern "C" fn Reset_Handler() -> ! {
     // running check
     //
     // (gdb) x/10xw 0x20000000
-    // 0x20000000 <SHOULD_LOCATED_IN_DATA_SECTION>:    0x00000001      0x00000002      0x00000003      0x00000000
-    // 0x20000010 <SHOULD_LOCATED_BSS_SECTION+4>:      0x00000000      0x00000000      0x00000000      0x00000000
-    // 0x20000020 <SHOULD_LOCATED_BSS_SECTION+20>:     0x00000000      0x00000000
+    // 0x20000000 :    0x00000001      0x00000002      0x00000003      0x007a1200
+    // 0x20000010 :    0x007a1200      0x007a1200      0x007a1200      0x003d0900
+    // 0x20000020 :    0x00000000      0x00000000
 
     // running check
     //
     // (gdb) i addr bare_metal_blinky::bare_main
-    // Symbol "bare_metal_blinky::bare_main" is a function at address 0x80004c4.
+    // Symbol "bare_metal_blinky::bare_main" is a function at address 0x80002ae.
     //
     // (gdb) x/10i 0x80004c4
-    // 0x80004c4 <main>:    push    {r7, lr}
-    // 0x80004c6 <main+2>:  mov     r7, sp
+    // 0x80002ae <main>:    push    {r7, lr}
+    // 0x80002b0 <main+2>:  mov     r7, sp
+    // 0x80002b2 <main+4>:  sub     sp, #40 ; 0x28
+    // 0x80002b4 <main+6>:  movw    r1, #6248       ; 0x1868
+    // 0x80002b8 <main+10>: movt    r1, #2048       ; 0x800
+    // 0x80002bc <main+14>: str     r1, [sp, #24]
+    // ...
 
     // Call user's main function
     unsafe { main() }

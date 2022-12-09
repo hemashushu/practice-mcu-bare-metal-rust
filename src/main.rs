@@ -38,7 +38,7 @@ use utils::spin;
 // $ arm-none-eabi-nm target/thumbv7m-none-eabi/debug/bare-metal-blinky
 //
 // ```
-// 2000000c B SHOULD_LOCATED_BSS_SECTION
+// 20000020 B SHOULD_LOCATED_BSS_SECTION
 // 20000000 D SHOULD_LOCATED_IN_DATA_SECTION
 // ```
 //
@@ -58,10 +58,14 @@ pub static mut SHOULD_LOCATED_BSS_SECTION: [u32; 7] = [0; 7];
 // $ arm-none-eabi-objdump -j .rodata -s target/thumbv7m-none-eabi/debug/bare-metal-blinky
 //
 // ```
-// 8001440 69746820 6f766572 666c6f77 48454c4c  ith overflowHELL
-// 8001450 4f20574f 524c4473 72632f6d 61696e2e  O WORLDsrc/main.
+// ...
+// 8001860 57010000 3d000000 48454c4c 4f20574f  W...=...HELLO WO
+// 8001870 524c4473 72632f6d 61696e2e 72730000  RLDsrc/main.rs..
+// ...
 // ```
 //
+// check out the "HELLO WORLD" string.
+
 pub const SHOULD_LOCATED_IN_RODATA_SECTION: &str = "HELLO WORLD";
 
 #[panic_handler]
@@ -101,8 +105,8 @@ pub extern "C" fn bare_main() -> ! {
     // test_systick(); // Test C
     test_uart(); // Test D
 
-    // ! Only one of the test A,B,C,D can be selected at a time. ! //
-    // ! `test_set_clock` can be combined with test A,B,C,D      ! //
+    // ! Only one of the test (A,B,C,D) can be selected at a time.
+    // ! `test_set_clock` can be combined with other test.
 
     loop {
         spin(1);
@@ -190,6 +194,14 @@ fn test_uart() {
     // set tick every 1 ms
     systick_init_with_millisecond();
 
+    // set builtin LED to output mode
+    gpio_init(
+        &pin::BUILTIN_LED_PIN,
+        GPIO_MODE::GPIO_MODE_OUTPUT_50MHZ,
+        GPIO_CNF::Output(GPIO_CNF_OUTPUT::GPIO_CNF_OUTPUT_PUSH_PULL),
+        None,
+    );
+
     // set external LED to output mode
     gpio_init(
         &pin::EXTERNAL_LED_PIN,
@@ -205,13 +217,19 @@ fn test_uart() {
     let usart1_register = unsafe { &mut *get_usart1_register() };
 
     loop {
-        // toggle builtin LED
-        gpio_write(&pin::EXTERNAL_LED_PIN, true); // set `true` to turn on external LED
-        uart_write_str(usart1_register, "LED on\r\n");
+        // turn on builtin LED
+        gpio_write(&pin::BUILTIN_LED_PIN, false); // set `false` to turn on builtin LED
+        uart_write_str(usart1_register, "builtin LED on\r\n");
         tick_delay(100);
 
+        // turn on external LED
+        gpio_write(&pin::EXTERNAL_LED_PIN, true); // set `true` to turn on external LED
+        uart_write_str(usart1_register, "external LED on\r\n");
+        tick_delay(100);
+
+        gpio_write(&pin::BUILTIN_LED_PIN, true);
         gpio_write(&pin::EXTERNAL_LED_PIN, false);
         uart_write_str(usart1_register, "LED off\r\n");
-        tick_delay(400);
+        tick_delay(500);
     }
 }

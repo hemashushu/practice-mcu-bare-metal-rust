@@ -96,21 +96,21 @@ EXTERN(Exceptions);
  * Idx Name          Size      VMA       LMA       File off  Algn
  *   0 .vector_table 00000040  08000000  08000000  00010000  2**2
  *                   CONTENTS, ALLOC, LOAD, READONLY, DATA
- *   1 .text         000012bc  08000040  08000040  00010040  2**2
+ *   1 .text         000017fa  08000040  08000040  00010040  2**2
  *                   CONTENTS, ALLOC, LOAD, READONLY, CODE
- *   2 .rodata       00000440  08001300  08001300  00011300  2**4
+ *   2 .rodata       00000458  08001840  08001840  00011840  2**4
  *                   CONTENTS, ALLOC, LOAD, READONLY, DATA
- *   3 .data         0000000c  20000000  08001740  00020000  2**2
+ *   3 .data         00000020  20000000  08001c98  00020000  2**2
  *                   CONTENTS, ALLOC, LOAD, DATA
- *   4 .bss          00000020  2000000c  2000000c  0002000c  2**2
+ *   4 .bss          00000028  20000020  20000020  00020020  2**3
  *                   ALLOC
  * ```
  *
  * - `.vector_table` starts from LMA `0x0800_0000`
- * - `.text` starts from LMA `B` (`B` = ADDR(.vector_table) + SIZEOF(.vector_table))
- * - `.rodata` starts from LMA `C` (`C` = ADDR(.text) + SIZEOF(.text))
- * - `.data` starts from VMA 0x2000_0000 and LMA `D` (`D` = ADDR(.rodata) + SIZEOF(.rodata))
- * - `.bss` starts from VMA `E` (`E` = ADDR(.data) + SIZEOF(.data))
+ * - `.text` starts from LMA `ADDR(.vector_table) + SIZEOF(.vector_table)`
+ * - `.rodata` starts from LMA `ADDR(.text) + SIZEOF(.text)`
+ * - `.data` starts from VMA 0x2000_0000 and LMA `ADDR(.rodata) + SIZEOF(.rodata)`
+ * - `.bss` starts from VMA `ADDR(.data) + SIZEOF(.data)`
  */
 
 /* the stack point is the end address of RAM, i.e. `0x20000000 + 0x5000` */
