@@ -2,7 +2,7 @@
 
 [EN](README.md) | [中文](README.zh-Hans.md)
 
-一个用 Rust 编写的微处理单元（MCU）STM32F103C8T6/STM32F103的 "裸机程序"，不依赖任何 IDE、SDK、HAL 或者库，唯一需要的是 Rust 编译器。通过直接读写硬件的寄存器实现信号的输入和输出、定时器、串口通信等功能。
+一个用纯 Rust 编写的微处理单元（MCU）STM32F103C8T6/STM32F103 的 "裸机程序"，不依赖任何 IDE、SDK、HAL 或者库，也不用汇编代码，唯一需要的是 Rust 编译器。通过直接读写硬件的寄存器的方式，实现基本的输入和输出、定时器、串口通信等功能。
 
 ![stm32f103 rust bare-metal](images/stm32f103-title-v2.jpg)
 
@@ -80,3 +80,6 @@
 - 项目 libopencm3
   https://github.com/libopencm3/libopencm3
 
+## C 语言版本
+
+作者同时使用 C 语言实现了本项目，感兴趣的请点击 [MCU STM32F030C8T6 Bare-metal in C](https://github.com/hemashushu/practice-mcu-bare-metal-stm32f030)

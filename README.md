@@ -2,7 +2,7 @@
 
 [EN](README.md) | [中文](README.zh-Hans.md)
 
-A bare metal (register level) STM32F103C8T6/STM32F103 MCU program in Rust without any IDE, SDK, HAL or libraries, the only tool required is the Rust compiler.
+A bare metal (register level) STM32F103C8T6/STM32F103 MCU program written in pure Rust without any IDE, SDK, HAL or library, and no assembly code, the only tool required is the Rust compiler. Implement basic input and output, timer, serial communication, etc. by directly reading and writing registers of hardware.
 
 ![stm32f103 rust bare-metal](images/stm32f103-title-v2.jpg)
 
@@ -35,7 +35,7 @@ A bare metal (register level) STM32F103C8T6/STM32F103 MCU program in Rust withou
 
 - PC13: builtin LED -
 - PB5: external LED +
-- PA0: button (the button another pin connect to GND)
+- PA0: button (the another button pin connect to GND)
 - PA9: USART1_TX -> CP2012 RX
 - PA10: USART1_RX -> CP2012 TX
 
@@ -82,3 +82,7 @@ For those who want to know how it works and who want to go further and implement
 
 - libopencm3 project
   https://github.com/libopencm3/libopencm3
+
+## C language version
+
+This project is also implemented in C by the author, for those interested please check out [MCU STM32F030C8T6 Bare-metal in C](https://github.com/hemashushu/practice-mcu-bare-metal-stm32f030)

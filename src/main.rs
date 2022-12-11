@@ -130,10 +130,6 @@ fn test_blink() {
     }
 }
 
-fn test_set_clock() {
-    clock_init();
-}
-
 fn test_button() {
     // set external LED pin to output mode
     gpio_init(
@@ -164,6 +160,10 @@ fn test_button() {
         // - true: turn on
         gpio_write(&pin::EXTERNAL_LED_PIN, !value);
     }
+}
+
+fn test_set_clock() {
+    clock_init();
 }
 
 fn test_systick() {
