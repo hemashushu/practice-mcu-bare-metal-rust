@@ -2,7 +2,7 @@
 
 [EN](README.md) | [中文](README.zh-Hans.md)
 
-A bare metal (register level) STM32F103C8T6/STM32F103 MCU program written in pure Rust without any IDE, SDK, HAL or library, and no assembly code, the only tool required is the Rust compiler. Implement basic input and output, timer, serial communication, etc. by directly reading and writing registers of hardware.
+A bare metal (register level) STM32F103C8T6/STM32F103 MCU program written in pure Rust without any IDE, SDK, HAL or library, and no assembly code, the only tool required is the Rust compiler. Implemented the basic input and output, timer, serial communication, etc. by directly reading and writing registers of hardware.
 
 ![stm32f103 rust bare-metal](images/stm32f103-title-v2.jpg)
 
